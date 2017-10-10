@@ -233,15 +233,83 @@ public class Drawing
     // It is ok for the position to leave the dimensions, as long it no attempt
     // is made to paint outside of the picture.
     // (5 marks)
+    @SuppressWarnings("Duplicates")
     public Image draw() throws BadCommand
     {
-        return null;
+        Image i = new Image(height, width, background);
+
+        int pointerX = 0;
+        int pointerY = 0;
+
+        int newPointerX = pointerX;
+        int newPointerY = pointerY;
+
+        for (DrawingCommand command : commands) {
+            Direction dir = command.dir;
+            int d = command.distance;
+            int c = command.colour;
+
+            if (dir == Direction.UP) {
+                newPointerY -= d;
+            } else if (dir == Direction.DOWN) {
+                newPointerY += d;
+            } else if (dir == Direction.LEFT) {
+                newPointerX -= d;
+            } else if (dir == Direction.RIGHT) {
+                newPointerX += d;
+            }
+
+            if (dir == Direction.UP || dir == Direction.DOWN) {
+                boolean forward = dir == Direction.DOWN;
+
+                if (command.paint) {
+                    if (forward) {
+                        for (int p = pointerY; p < newPointerY; p++) {
+                            i.set(newPointerX, p + 1, c);
+                        }
+                    } else {
+                        for (int p = pointerY; p > newPointerY; p--) {
+                            i.set(newPointerX, p - 1, c);
+                        }
+                    }
+                }
+            } else if (dir == Direction.LEFT || dir == Direction.RIGHT) {
+                boolean forward = dir == Direction.RIGHT;
+
+                if (command.paint) {
+                    if (forward) {
+                        for (int p = pointerX; p < newPointerX; p++) {
+                            i.set(p + 1, newPointerY, c);
+                        }
+                    } else {
+                        for (int p = pointerX; p > newPointerX; p--) {
+                            i.set(p - 1, newPointerY, c);
+                        }
+                    }
+                }
+            }
+
+            pointerX = newPointerX;
+            pointerY = newPointerY;
+        }
+
+        System.out.println(i.toString());
+
+        return i;
     }
 
     public static void main(String[] args)
     {
+        args = new String[1];
+        args[0] = "./test-images/test-command";
+
         // A simple test to read in an file of drawing commands and print it out.
         Drawing d = new Drawing(args[0]);
-        System.out.print(d.toString());
+
+        try {
+            d.draw().toString();
+        } catch (BadCommand e) {
+            System.out.println(e);
+        }
     }
 }

@@ -78,6 +78,15 @@ public class Image
         return s.toString();
     }
 
+    public void set(int x, int y, int v) throws BadCommand
+    {
+        try {
+            pixels[y][x] = v;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new BadCommand();
+        }
+    }
+
     // TASK 2: Implement the compress method to create and return a list of
     // drawing commands that will draw this image.
     // 6 marks for correctness -- does the command list exactly produce the
