@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.stream.Collectors;
 
 class Coordinate
 {
@@ -193,7 +194,8 @@ public class Compressor
 
         HashMap<Coordinate, Double> coordinateDistance = new HashMap<>();
         for (Coordinate c : standaloneCoordinates) {
-            coordinateDistance.put(c, Math.sqrt(Math.pow(cursor.x - c.x, 2) + Math.pow(cursor.y - c.y, 2)));
+            double distance = getCostGoTo(c);
+            coordinateDistance.put(c, distance);
         }
 
         Coordinate closest = Collections.min(coordinateDistance.entrySet(), Map.Entry.comparingByValue()).getKey();
@@ -209,11 +211,15 @@ public class Compressor
         int costDrawingFrom = getCostGoTo(bldFrom);
         int costDrawingTo = getCostGoTo(bldTo);
 
-        HashMap<Coordinate, Integer> costs = new HashMap<>();
-        costs.put(ip.from, costFrom);
-        costs.put(ip.to, costTo);
+        Map<Coordinate, Integer> costs = new HashMap<>();
         costs.put(bldFrom, costDrawingFrom);
         costs.put(bldTo, costDrawingTo);
+        costs.put(ip.from, costFrom);
+        costs.put(ip.to, costTo);
+
+        costs = costs.entrySet().stream()
+                .filter(e -> e.getValue() > 0)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         Coordinate target = Collections.min(costs.entrySet(), Map.Entry.comparingByValue()).getKey();
 
@@ -223,35 +229,36 @@ public class Compressor
         int offsetX = 0;
         int offsetY = 0;
 
-        if (target == ip.from || target == ip.to) {
+        if ((target == ip.from || target == ip.to) && target != cursor) {
             if (distanceX > 0) {
                 offsetX = -1;
             } else if (distanceX < 0) {
                 offsetX = 1;
             }
 
-            if (distanceY > 0) {
-                offsetY = -1;
-            } else if (distanceY < 0) {
-                offsetY = 1;
+            if (offsetX == 0) {
+                if (distanceY > 0) {
+                    offsetY = -1;
+                } else if (distanceY < 0) {
+                    offsetY = 1;
+                }
             }
 
             if (distanceX != 0 && isWithinBounds(new Coordinate(cursor.x + distanceX + offsetX, cursor.y))) {
-                offsetY = 0;
-            } else if (distanceY != 0 && isWithinBounds(new Coordinate(cursor.x, cursor.y + distanceY + offsetY))) {
-                offsetX = 0;
+                distanceX += offsetX;
+            }
+
+            if (distanceY != 0 && isWithinBounds(new Coordinate(cursor.x, cursor.y + distanceY + offsetY))) {
+                distanceY += offsetY;
             }
         }
 
-        distanceX = Math.abs(distanceX) + offsetX;
-        distanceY = Math.abs(distanceY) + offsetY;
-
         if (distanceX != 0) {
-            this.addCommand(distanceX < 0 ? Direction.LEFT : Direction.RIGHT, distanceX, false, 0);
+            this.addCommand(distanceX < 0 ? Direction.LEFT : Direction.RIGHT, Math.abs(distanceX), false, 0);
         }
 
         if (distanceY != 0) {
-            this.addCommand(distanceY < 0 ? Direction.UP : Direction.DOWN, distanceY, false, 0);
+            this.addCommand(distanceY < 0 ? Direction.UP : Direction.DOWN, Math.abs(distanceY), false, 0);
         }
 
 //        int color = getColorForDirection(cursor, dc.direction);
@@ -523,11 +530,12 @@ public class Compressor
                 i++;
                 int newY = y + (incr * (i + offset));
                 try {
-                    if (drawnCoordinates.contains(new Coordinate(x, newY))) {
-                        return 0;
-                    }
                     color = image.get(x, newY);
                 } catch (ArrayIndexOutOfBoundsException e) {
+                    break;
+                }
+
+                if (drawnCoordinates.contains(new Coordinate(x, newY))) {
                     break;
                 }
             } while (initialColor == color);
@@ -553,11 +561,12 @@ public class Compressor
                 i++;
                 int newX = x + (incr * (i + offset));
                 try {
-                    if (drawnCoordinates.contains(new Coordinate(newX, y))) {
-                        return 0;
-                    }
                     color = image.get(newX, y);
                 } catch (ArrayIndexOutOfBoundsException e) {
+                    break;
+                }
+
+                if (drawnCoordinates.contains(new Coordinate(newX, y))) {
                     break;
                 }
             } while (initialColor == color);
