@@ -128,7 +128,7 @@ public class Compressor
     {
         Set<Coordinate> drawableCoordinates = this.getDrawableCoordinates();
 
-        int limit = 1000;
+        int limit = 10000;
         int i = 0;
         while (!drawnCoordinates.containsAll(drawableCoordinates) && i < limit) {
             computeNextCommand();
@@ -136,7 +136,8 @@ public class Compressor
         }
 
         if (i == limit) {
-            System.err.println("/!\\ EXIT BY SECURITY /!\\");
+            System.err.println("/!\\ EXIT BECAUSE OF PRESUMED INFINITE LOOP /!\\");
+            System.exit(1);
         }
 
         return drawing;
@@ -162,10 +163,7 @@ public class Compressor
         DirectionCost dc = this.getBestDirectionCost(cursor, 1);
 
         if (null == dc) {
-            // find the closest
-            //System.err.println("STUCK");
             this.computeNearestStandalone();
-            //System.exit(1);
         } else {
             int color = getColorForDirection(cursor, dc.direction);
             addCommand(dc.direction, dc.cost, true, color);
@@ -260,31 +258,6 @@ public class Compressor
         if (distanceY != 0) {
             this.addCommand(distanceY < 0 ? Direction.UP : Direction.DOWN, Math.abs(distanceY), false, 0);
         }
-
-//        int color = getColorForDirection(cursor, dc.direction);
-//        addCommand(dc.direction, dc.cost, true, color);
-
-//        Coordinate drawingLocation = computeBestLocationForDrawing(closest);
-//
-//        if (null != drawingLocation) {
-//            int distanceX = drawingLocation.x - cursor.x;
-//            int distanceY = drawingLocation.y - cursor.y;
-//
-//            int closestColor = image.get(closest.x, closest.y);
-//            int drawingLocationColor = image.get(drawingLocation.x, drawingLocation.y);
-//
-//            if() {
-//
-//            }
-//
-//            if (distanceX != 0) {
-//                this.addCommand(distanceX < 0 ? Direction.LEFT : Direction.RIGHT, Math.abs(distanceX), false, 0);
-//            }
-//
-//            if (distanceY != 0) {
-//                this.addCommand(distanceY < 0 ? Direction.UP : Direction.DOWN, Math.abs(distanceY), false, 0);
-//            }
-//        }
     }
 
     private int getCostGoTo(Coordinate c)
@@ -309,7 +282,6 @@ public class Compressor
         Map<Direction, Integer> neighbours = calculateNeighboursCosts(coordinate, 0);
 
         int verticalCost = 0;
-
         int costUp = neighbours.get(Direction.UP);
         if (costUp > 0) {
             verticalCost += costUp + 1;
@@ -319,9 +291,7 @@ public class Compressor
             verticalCost += costDown + 1;
         }
 
-
         int horizontalCost = 0;
-
         int costLeft = neighbours.get(Direction.LEFT);
         if (costLeft > 0) {
             horizontalCost += costLeft + 1;
@@ -412,7 +382,8 @@ public class Compressor
             return right;
         }
 
-        System.err.println("NO LOCATION AVAILABLE FOR DRAWING " + coordinate);
+        System.err.println("NO SUITABLE LOCATION AVAILABLE FOR DRAWING " + coordinate);
+
         return null;
     }
 
