@@ -2,6 +2,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Objects;
 
 // This class represents a simple rectangular image, where each pixel can be
 // one of 16 colours.
@@ -87,6 +88,26 @@ public class Image
         }
     }
 
+    public int get(int x, int y)
+    {
+        return pixels[y][x];
+    }
+
+    public int[][] getPixels()
+    {
+        return pixels;
+    }
+
+    public int getWidth()
+    {
+        return pixels[0].length;
+    }
+
+    public int getHeight()
+    {
+        return pixels.length;
+    }
+
     // TASK 2: Implement the compress method to create and return a list of
     // drawing commands that will draw this image.
     // 6 marks for correctness -- does the command list exactly produce the
@@ -100,7 +121,9 @@ public class Image
     // the next best 20%, and so on.
     public Drawing compress()
     {
-        return null;
+        Compressor c = new Compressor(this);
+
+        return c.compress();
     }
 
     // This is the standard 4-bit EGA colour scheme, where the numbers represent
@@ -133,9 +156,27 @@ public class Image
 
     public static void main(String[] args)
     {
+        args = new String[1];
+        args[0] = "./test-images/test-image3";
+
         // A simple test to read in an image and print it out.
         Image i = new Image(args[0]);
-        System.out.print(i.toString());
-        i.toPNG(args[0]);
+
+        Drawing d = i.compress();
+
+        System.out.println("Nb commands: " + d.commands.size());
+
+        System.out.print(d.toString());
+        try {
+            System.out.print(d.draw().toString());
+        } catch (BadCommand e) {
+            System.out.println(e);
+        }
+
+        try {
+            System.out.println(Objects.equals(i.toString(), d.draw().toString()));
+        } catch (BadCommand e) {
+            System.out.println(e);
+        }
     }
 }

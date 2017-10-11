@@ -293,8 +293,6 @@ public class Drawing
             pointerY = newPointerY;
         }
 
-        System.out.println(i.toString());
-
         return i;
     }
 
