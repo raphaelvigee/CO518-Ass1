@@ -157,7 +157,7 @@ public class Image
     public static void main(String[] args)
     {
         args = new String[1];
-        args[0] = "./test-images/test-image5";
+        args[0] = "./test-images/test-image3";
 
         // A simple test to read in an image and print it out.
         Image i = new Image(args[0]);
@@ -166,12 +166,19 @@ public class Image
 
         System.out.println("Nb commands: " + d.commands.size());
 
+        System.out.println();
+
         System.out.print(d.toString());
+
+        System.out.println();
+
         try {
             System.out.print(d.draw().toString());
         } catch (BadCommand e) {
             System.out.println(e);
         }
+
+        System.out.println();
 
         try {
             System.out.println(Objects.equals(i.toString(), d.draw().toString()));
