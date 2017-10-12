@@ -89,15 +89,13 @@ class InlinePixels
 
 public class Compressor
 {
-    private Image image;
+    public Image image;
 
-    private Drawing drawing;
+    public Drawing drawing;
 
-    private int backgroundColor;
+    public HashSet<Coordinate> drawnCoordinates;
 
-    private HashSet<Coordinate> drawnCoordinates;
-
-    private Coordinate cursor = new Coordinate(0, 0);
+    public Coordinate cursor = new Coordinate(0, 0);
 
     Compressor(Image image)
     {
@@ -119,8 +117,8 @@ public class Compressor
         }
 
         // Takes most present color
-        this.backgroundColor = Collections.max(colorsCount.entrySet(), Map.Entry.comparingByValue()).getKey();
-        this.drawing = new Drawing(h, w, this.backgroundColor);
+        int background = Collections.max(colorsCount.entrySet(), Map.Entry.comparingByValue()).getKey();
+        this.drawing = new Drawing(h, w, background);
         this.drawnCoordinates = new HashSet<>();
     }
 
@@ -131,6 +129,10 @@ public class Compressor
         int limit = 10000;
         int i = 0;
         while (!drawnCoordinates.containsAll(drawableCoordinates) && i < limit) {
+            if (isPaused()) {
+                continue;
+            }
+
             computeNextCommand();
             i++;
         }
@@ -143,13 +145,18 @@ public class Compressor
         return drawing;
     }
 
+    public boolean isPaused()
+    {
+        return false;
+    }
+
     private Set<Coordinate> getDrawableCoordinates()
     {
         HashSet<Coordinate> drawableCoordinates = new HashSet<>();
         for (int x = 0; x < image.getWidth(); x++) {
             for (int y = 0; y < image.getHeight(); y++) {
                 int c = image.getPixels()[y][x];
-                if (c != backgroundColor) {
+                if (c != drawing.background) {
                     drawableCoordinates.add(new Coordinate(x, y));
                 }
             }
@@ -392,7 +399,7 @@ public class Compressor
         return c.x >= 0 && c.x <= image.getWidth() && c.y >= 0 && c.y < image.getHeight();
     }
 
-    private void addCommand(Direction direction, int distance, boolean paint, int color)
+    protected void addCommand(Direction direction, int distance, boolean paint, int color)
     {
         StringBuilder sb = new StringBuilder(direction.toString() + " " + distance);
 
@@ -491,7 +498,7 @@ public class Compressor
                 return -999;
             }
 
-            if (initialColor == backgroundColor) {
+            if (initialColor == drawing.background) {
                 return -1;
             }
 
@@ -522,7 +529,7 @@ public class Compressor
                 return -999;
             }
 
-            if (initialColor == backgroundColor) {
+            if (initialColor == drawing.background) {
                 return -1;
             }
 

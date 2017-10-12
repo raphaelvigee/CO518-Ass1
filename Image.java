@@ -10,7 +10,7 @@ public class Image
 {
 
     // Store a 2 dimensional image with "colours" as numbers between 0 and 15
-    private int pixels[][];
+    private int pixels[][] = new int[0][0];
 
     // Read in an image from a file. Each line of the file must be the same
     // length, and only contain single digit hex numbers 0-9 and a-f.
@@ -121,7 +121,7 @@ public class Image
     // the next best 20%, and so on.
     public Drawing compress()
     {
-        Compressor c = new Compressor(this);
+        Compressor c = new CompressorDebugger(this);
 
         return c.compress();
     }

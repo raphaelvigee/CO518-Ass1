@@ -152,7 +152,7 @@ public class Drawing
 
     int width;
 
-    int background;
+    public int background;
 
     ArrayList<DrawingCommand> commands;
 
