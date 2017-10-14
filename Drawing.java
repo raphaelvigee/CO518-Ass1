@@ -77,7 +77,7 @@ class DrawingCommand
         try {
             distance = Integer.parseInt(elems[1]);
         } catch (NumberFormatException e) {
-            System.out.println("Bad distance (should be a number): " + elems[1]);
+            System.out.println("Bad length (should be a number): " + elems[1]);
             System.exit(1);
         }
         // Check for the optional colour

@@ -3,6 +3,7 @@ import javax.swing.border.Border;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.Objects;
 
 class PixelCellRenderer extends DefaultTableCellRenderer
 {
@@ -63,9 +64,13 @@ public class CompressorDebugger extends Compressor
     private int tableRows;
 
     int tableWidth;
+
     int tableHeight;
+
     int frameWidth;
+
     int frameHeight;
+
     private boolean isPaused = false;
 
     private int idleTime = 250;
@@ -197,7 +202,14 @@ public class CompressorDebugger extends Compressor
 
     private void done()
     {
-        JOptionPane.showMessageDialog(null, "Done !");
+        boolean result = false;
+        try {
+            result = Objects.equals(image.toString(), drawing.draw().toString());
+        } catch (BadCommand badCommand) {
+            badCommand.printStackTrace();
+        }
+
+        JOptionPane.showMessageDialog(null, result ? "Done !" : "FAIL");
     }
 
     public void update()

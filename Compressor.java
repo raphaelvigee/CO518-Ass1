@@ -37,16 +37,16 @@ class Coordinate
     }
 }
 
-class DirectionCost
+class DirectionLength
 {
     Direction direction;
 
-    int cost;
+    int length;
 
-    DirectionCost(Direction direction, int cost)
+    DirectionLength(Direction direction, int length)
     {
         this.direction = direction;
-        this.cost = cost;
+        this.length = length;
     }
 }
 
@@ -167,13 +167,13 @@ public class Compressor
 
     private void computeNextCommand()
     {
-        DirectionCost dc = this.getBestDirectionCost(cursor, 1);
+        DirectionLength dl = this.getBestDirectionLength(cursor, 1);
 
-        if (null == dc) {
+        if (null == dl) {
             this.computeNearestStandalone();
         } else {
-            int color = getColorForDirection(cursor, dc.direction);
-            addCommand(dc.direction, dc.cost, true, color);
+            int color = getColorForDirection(cursor, dl.direction);
+            addCommand(dl.direction, dl.length, true, color);
         }
     }
 
@@ -286,29 +286,29 @@ public class Compressor
     {
         int initialColor = image.get(coordinate.x, coordinate.y);
 
-        Map<Direction, Integer> neighbours = calculateNeighboursCosts(coordinate, 0);
+        Map<Direction, Integer> neighbours = calculateNeighboursLengths(coordinate, 0);
 
-        int verticalCost = 0;
-        int costUp = neighbours.get(Direction.UP);
-        if (costUp > 0) {
-            verticalCost += costUp + 1;
+        int verticalLength = 0;
+        int lengthUp = neighbours.get(Direction.UP);
+        if (lengthUp > 0) {
+            verticalLength += lengthUp;
         }
-        int costDown = neighbours.get(Direction.DOWN);
-        if (costDown > 0) {
-            verticalCost += costDown + 1;
-        }
-
-        int horizontalCost = 0;
-        int costLeft = neighbours.get(Direction.LEFT);
-        if (costLeft > 0) {
-            horizontalCost += costLeft + 1;
-        }
-        int costRight = neighbours.get(Direction.RIGHT);
-        if (costRight > 0) {
-            horizontalCost += costRight + 1;
+        int lengthDown = neighbours.get(Direction.DOWN);
+        if (lengthDown > 0) {
+            verticalLength += lengthDown;
         }
 
-        if (verticalCost > horizontalCost) {
+        int horizontalLength = 0;
+        int lengthLeft = neighbours.get(Direction.LEFT);
+        if (lengthLeft > 0) {
+            horizontalLength += lengthLeft;
+        }
+        int lengthRight = neighbours.get(Direction.RIGHT);
+        if (lengthRight > 0) {
+            horizontalLength += lengthRight;
+        }
+
+        if (verticalLength > horizontalLength) {
             // Vertical
             int i;
             int color;
@@ -450,9 +450,9 @@ public class Compressor
         }
     }
 
-    private DirectionCost getBestDirectionCost(Coordinate coordinate, int offset)
+    private DirectionLength getBestDirectionLength(Coordinate coordinate, int offset)
     {
-        Map<Direction, Integer> neighbours = calculateNeighboursCosts(coordinate, offset);
+        Map<Direction, Integer> neighbours = calculateNeighboursLengths(coordinate, offset);
 
         boolean allImpossible = true;
         for (Map.Entry<Direction, Integer> entry : neighbours.entrySet()) {
@@ -467,23 +467,23 @@ public class Compressor
 
         Map.Entry<Direction, Integer> pair = Collections.max(neighbours.entrySet(), Map.Entry.comparingByValue());
 
-        return new DirectionCost(pair.getKey(), pair.getValue());
+        return new DirectionLength(pair.getKey(), pair.getValue());
     }
 
-    private Map<Direction, Integer> calculateNeighboursCosts(Coordinate coordinate, int offset)
+    private Map<Direction, Integer> calculateNeighboursLengths(Coordinate coordinate, int offset)
     {
         HashMap<Direction, Integer> directions = new HashMap<>();
 
-        directions.put(Direction.UP, this.calculateDirectionCost(coordinate, Direction.UP, offset));
-        directions.put(Direction.RIGHT, this.calculateDirectionCost(coordinate, Direction.RIGHT, offset));
-        directions.put(Direction.DOWN, this.calculateDirectionCost(coordinate, Direction.DOWN, offset));
-        directions.put(Direction.LEFT, this.calculateDirectionCost(coordinate, Direction.LEFT, offset));
+        directions.put(Direction.UP, this.calculateDirectionLength(coordinate, Direction.UP, offset));
+        directions.put(Direction.RIGHT, this.calculateDirectionLength(coordinate, Direction.RIGHT, offset));
+        directions.put(Direction.DOWN, this.calculateDirectionLength(coordinate, Direction.DOWN, offset));
+        directions.put(Direction.LEFT, this.calculateDirectionLength(coordinate, Direction.LEFT, offset));
 
         return directions;
     }
 
     @SuppressWarnings("Duplicates")
-    private int calculateDirectionCost(Coordinate coordinate, Direction direction, int offset)
+    private int calculateDirectionLength(Coordinate coordinate, Direction direction, int offset)
     {
         int x = coordinate.x;
         int y = coordinate.y;
