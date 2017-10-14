@@ -488,6 +488,8 @@ public class Compressor
         int x = coordinate.x;
         int y = coordinate.y;
 
+        double containsCap = 70 / 100;
+
         if (direction == Direction.UP || direction == Direction.DOWN) {
             int incr = direction == Direction.UP ? -1 : 1;
 
@@ -504,6 +506,8 @@ public class Compressor
 
             int i = -1;
             int color;
+            int containsCount = 0;
+            int lastIBeforeContains = -1;
             do {
                 i++;
                 int newY = y + (incr * (i + offset));
@@ -514,9 +518,17 @@ public class Compressor
                 }
 
                 if (drawnCoordinates.contains(new Coordinate(x, newY))) {
-                    break;
+                    containsCount++;
+                    if(lastIBeforeContains == -1) {
+                        lastIBeforeContains = i;
+                    }
+                    continue;
                 }
             } while (initialColor == color);
+
+            if (containsCount / i > containsCap) {
+                return lastIBeforeContains;
+            }
 
             return i;
         } else if (direction == Direction.LEFT || direction == Direction.RIGHT) {
@@ -535,6 +547,8 @@ public class Compressor
 
             int i = -1;
             int color;
+            int containsCount = 0;
+            int lastIBeforeContains = -1;
             do {
                 i++;
                 int newX = x + (incr * (i + offset));
@@ -545,9 +559,17 @@ public class Compressor
                 }
 
                 if (drawnCoordinates.contains(new Coordinate(newX, y))) {
-                    break;
+                    containsCount++;
+                    if(lastIBeforeContains == -1) {
+                        lastIBeforeContains = i;
+                    }
+                    continue;
                 }
             } while (initialColor == color);
+
+            if (containsCount / i > containsCap) {
+                return lastIBeforeContains;
+            }
 
             return i;
         }

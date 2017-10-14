@@ -119,9 +119,16 @@ public class Image
     // 4 marks for shrinking the other, more difficult, test images. We'll run
     // this as a competition and give all 4 to the best 20% of the class, 3 to
     // the next best 20%, and so on.
-    public Drawing compress()
+    public Drawing compressWithDebug()
     {
         Compressor c = new CompressorDebugger(this);
+
+        return c.compress();
+    }
+
+    public Drawing compress()
+    {
+        Compressor c = new Compressor(this);
 
         return c.compress();
     }
@@ -162,7 +169,7 @@ public class Image
         // A simple test to read in an image and print it out.
         Image i = new Image(args[0]);
 
-        Drawing d = i.compress();
+        Drawing d = i.compressWithDebug();
 
         System.out.println("Nb commands: " + d.commands.size());
 
