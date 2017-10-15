@@ -300,10 +300,10 @@ public class Compressor
             Coordinate c2;
             if (ip.from.x < ip.to.x) {
                 c1 = new Coordinate(ip.from.x - 1, ip.from.y);
-                c2 = new Coordinate(ip.to.x + 1, ip.from.y);
+                c2 = new Coordinate(ip.to.x + 1, ip.to.y);
             } else {
                 c1 = new Coordinate(ip.from.x + 1, ip.from.y);
-                c2 = new Coordinate(ip.to.x - 1, ip.from.y);
+                c2 = new Coordinate(ip.to.x - 1, ip.to.y);
             }
             locations.put(c1, getCostGoTo(c1));
             locations.put(c2, getCostGoTo(c2));
@@ -312,10 +312,10 @@ public class Compressor
             Coordinate c2;
             if (ip.from.y < ip.to.y) {
                 c1 = new Coordinate(ip.from.x, ip.from.y - 1);
-                c2 = new Coordinate(ip.from.x, ip.to.y + 1);
+                c2 = new Coordinate(ip.to.x, ip.to.y + 1);
             } else {
                 c1 = new Coordinate(ip.from.x, ip.from.y + 1);
-                c2 = new Coordinate(ip.from.x, ip.to.y - 1);
+                c2 = new Coordinate(ip.to.x, ip.to.y - 1);
             }
             locations.put(c1, getCostGoTo(c1));
             locations.put(c2, getCostGoTo(c2));
@@ -339,13 +339,21 @@ public class Compressor
             if (ip.getOrientation() == InlinePixels.Orientation.HORIZONTAL) {
                 Coordinate c1 = new Coordinate(ip.from.x, ip.from.y - 1);
                 Coordinate c2 = new Coordinate(ip.from.x, ip.from.y + 1);
+                Coordinate c3 = new Coordinate(ip.to.x, ip.to.y - 1);
+                Coordinate c4 = new Coordinate(ip.to.x, ip.to.y + 1);
                 locations.put(c1, getCostGoTo(c1));
                 locations.put(c2, getCostGoTo(c2));
+                locations.put(c3, getCostGoTo(c3));
+                locations.put(c4, getCostGoTo(c4));
             } else if (ip.getOrientation() == InlinePixels.Orientation.VERTICAL) {
                 Coordinate c1 = new Coordinate(ip.from.x - 1, ip.from.y);
                 Coordinate c2 = new Coordinate(ip.from.x + 1, ip.from.y);
+                Coordinate c3 = new Coordinate(ip.to.x - 1, ip.to.y);
+                Coordinate c4 = new Coordinate(ip.to.x + 1, ip.to.y);
                 locations.put(c1, getCostGoTo(c1));
                 locations.put(c2, getCostGoTo(c2));
+                locations.put(c3, getCostGoTo(c3));
+                locations.put(c4, getCostGoTo(c4));
             }
         }
 
@@ -353,7 +361,7 @@ public class Compressor
                 .filter(e -> isWithinBounds(e.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        return Collections.max(locations.entrySet(), Map.Entry.comparingByValue()).getKey();
+        return Collections.min(locations.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
     private boolean isWithinBounds(Coordinate c)
