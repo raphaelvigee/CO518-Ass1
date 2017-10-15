@@ -199,21 +199,6 @@ public class Compressor
         }
     }
 
-    private int getColorForDirection(Coordinate coordinate, Direction direction)
-    {
-        if (direction == Direction.UP) {
-            return image.get(coordinate.x, coordinate.y - 1);
-        } else if (direction == Direction.DOWN) {
-            return image.get(coordinate.x, coordinate.y + 1);
-        } else if (direction == Direction.LEFT) {
-            return image.get(coordinate.x - 1, coordinate.y);
-        } else if (direction == Direction.RIGHT) {
-            return image.get(coordinate.x + 1, coordinate.y);
-        }
-
-        return -1;
-    }
-
     private boolean computeNearestStandalone()
     {
         Set<Coordinate> standaloneCoordinates = this.getDrawableCoordinates();
