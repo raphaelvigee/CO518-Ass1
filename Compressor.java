@@ -18,7 +18,7 @@ class Coordinate
     {
         if (v instanceof Coordinate) {
             Coordinate c = (Coordinate) v;
-            return Objects.equals(c.toString(), this.toString());
+            return c.x == this.x && c.y == this.y;
         }
 
         return false;
@@ -63,24 +63,22 @@ class InlinePixels
 
     InlinePixels(Coordinate from, Coordinate to)
     {
-        assert from.x == to.x || from.y == to.y;
-
         this.from = from;
         this.to = to;
     }
 
     public Orientation getOrientation()
     {
-        if (from == to) {
+        if (from.equals(to)) {
             return Orientation.SINGLE;
         }
 
         if (from.x == to.x) {
-            return Orientation.HORIZONTAL;
+            return Orientation.VERTICAL;
         }
 
         if (from.y == to.y) {
-            return Orientation.VERTICAL;
+            return Orientation.HORIZONTAL;
         }
 
         return null;
@@ -97,6 +95,10 @@ public class Compressor
 
     public Coordinate cursor = new Coordinate(0, 0);
 
+    public List<Integer> colors;
+
+    public int currentColorIndex;
+
     Compressor(Image image)
     {
         this.image = image;
@@ -112,12 +114,19 @@ public class Compressor
                 if (colorsCount.containsKey(p)) {
                     pixelCount = colorsCount.get(p);
                 }
+                pixelCount++;
                 colorsCount.put(p, pixelCount);
             }
         }
 
+        colors = colorsCount.entrySet().stream()
+                .sorted((c1, c2) -> Integer.compare(c2.getValue(), c1.getValue()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
         // Takes most present color
         int background = Collections.max(colorsCount.entrySet(), Map.Entry.comparingByValue()).getKey();
+        this.nextColor();
         this.drawing = new Drawing(h, w, background);
         this.drawnCoordinates = new HashSet<>();
     }
@@ -145,6 +154,16 @@ public class Compressor
         return drawing;
     }
 
+    public int getCurrentColor()
+    {
+        return colors.get(currentColorIndex);
+    }
+
+    public void nextColor()
+    {
+        currentColorIndex++;
+    }
+
     public boolean isPaused()
     {
         return false;
@@ -155,7 +174,7 @@ public class Compressor
         HashSet<Coordinate> drawableCoordinates = new HashSet<>();
         for (int x = 0; x < image.getWidth(); x++) {
             for (int y = 0; y < image.getHeight(); y++) {
-                int c = image.getPixels()[y][x];
+                int c = image.get(x, y);
                 if (c != drawing.background) {
                     drawableCoordinates.add(new Coordinate(x, y));
                 }
@@ -170,10 +189,13 @@ public class Compressor
         DirectionLength dl = this.getBestDirectionLength(cursor, 1);
 
         if (null == dl) {
-            this.computeNearestStandalone();
+            boolean result = this.computeNearestStandalone();
+
+            if (!result) {
+                nextColor();
+            }
         } else {
-            int color = getColorForDirection(cursor, dl.direction);
-            addCommand(dl.direction, dl.length, true, color);
+            addCommand(dl.direction, dl.length, true, getCurrentColor());
         }
     }
 
@@ -192,71 +214,31 @@ public class Compressor
         return -1;
     }
 
-    private void computeNearestStandalone()
+    private boolean computeNearestStandalone()
     {
         Set<Coordinate> standaloneCoordinates = this.getDrawableCoordinates();
         standaloneCoordinates.removeAll(drawnCoordinates);
 
         HashMap<Coordinate, Double> coordinateDistance = new HashMap<>();
         for (Coordinate c : standaloneCoordinates) {
-            double distance = getCostGoTo(c);
-            coordinateDistance.put(c, distance);
+            if (image.get(c.x, c.y) == getCurrentColor()) {
+                double distance = getCostGoTo(c);
+                coordinateDistance.put(c, distance);
+            }
+        }
+
+        if (coordinateDistance.size() == 0) {
+            return false;
         }
 
         Coordinate closest = Collections.min(coordinateDistance.entrySet(), Map.Entry.comparingByValue()).getKey();
 
         InlinePixels ip = this.computeBestInlinePixels(closest);
 
-        int costFrom = getCostGoTo(ip.from);
-        int costTo = getCostGoTo(ip.to);
-
-        Coordinate bldFrom = computeBestLocationForDrawing(ip.from);
-        Coordinate bldTo = computeBestLocationForDrawing(ip.to);
-
-        int costDrawingFrom = getCostGoTo(bldFrom);
-        int costDrawingTo = getCostGoTo(bldTo);
-
-        Map<Coordinate, Integer> costs = new HashMap<>();
-        costs.put(bldFrom, costDrawingFrom);
-        costs.put(bldTo, costDrawingTo);
-        costs.put(ip.from, costFrom);
-        costs.put(ip.to, costTo);
-
-        costs = costs.entrySet().stream()
-                .filter(e -> e.getValue() > 0)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-        Coordinate target = Collections.min(costs.entrySet(), Map.Entry.comparingByValue()).getKey();
+        Coordinate target = computeBestLocationForDrawing(ip);
 
         int distanceX = target.x - cursor.x;
         int distanceY = target.y - cursor.y;
-
-        int offsetX = 0;
-        int offsetY = 0;
-
-        if ((target == ip.from || target == ip.to) && target != cursor) {
-            if (distanceX > 0) {
-                offsetX = -1;
-            } else if (distanceX < 0) {
-                offsetX = 1;
-            }
-
-            if (offsetX == 0) {
-                if (distanceY > 0) {
-                    offsetY = -1;
-                } else if (distanceY < 0) {
-                    offsetY = 1;
-                }
-            }
-
-            if (distanceX != 0 && isWithinBounds(new Coordinate(cursor.x + distanceX + offsetX, cursor.y))) {
-                distanceX += offsetX;
-            }
-
-            if (distanceY != 0 && isWithinBounds(new Coordinate(cursor.x, cursor.y + distanceY + offsetY))) {
-                distanceY += offsetY;
-            }
-        }
 
         if (distanceX != 0) {
             this.addCommand(distanceX < 0 ? Direction.LEFT : Direction.RIGHT, Math.abs(distanceX), false, 0);
@@ -265,6 +247,8 @@ public class Compressor
         if (distanceY != 0) {
             this.addCommand(distanceY < 0 ? Direction.UP : Direction.DOWN, Math.abs(distanceY), false, 0);
         }
+
+        return true;
     }
 
     private int getCostGoTo(Coordinate c)
@@ -284,114 +268,92 @@ public class Compressor
 
     private InlinePixels computeBestInlinePixels(Coordinate coordinate)
     {
-        int initialColor = image.get(coordinate.x, coordinate.y);
+        Map<Direction, Integer> neighbours = calculateNeighboursLengths(coordinate, 1);
 
-        Map<Direction, Integer> neighbours = calculateNeighboursLengths(coordinate, 0);
-
-        int verticalLength = 0;
         int lengthUp = neighbours.get(Direction.UP);
-        if (lengthUp > 0) {
-            verticalLength += lengthUp;
-        }
         int lengthDown = neighbours.get(Direction.DOWN);
-        if (lengthDown > 0) {
-            verticalLength += lengthDown;
-        }
-
-        int horizontalLength = 0;
         int lengthLeft = neighbours.get(Direction.LEFT);
-        if (lengthLeft > 0) {
-            horizontalLength += lengthLeft;
-        }
         int lengthRight = neighbours.get(Direction.RIGHT);
-        if (lengthRight > 0) {
-            horizontalLength += lengthRight;
-        }
 
-        if (verticalLength > horizontalLength) {
-            // Vertical
-            int i;
-            int color;
+        int horizontalLength = lengthLeft + lengthRight;
+        int verticalLength = lengthUp + lengthDown;
 
-            i = 0;
-            do {
-                i--;
-                try {
-                    color = image.get(coordinate.x, coordinate.y + i);
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    break;
-                }
-            } while (initialColor == color);
-
-            Coordinate from = new Coordinate(coordinate.x, coordinate.y + (i + 1));
-
-            i = 0;
-            do {
-                i++;
-                try {
-                    color = image.get(coordinate.x, coordinate.y + i);
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    break;
-                }
-            } while (initialColor == color);
-
-            Coordinate to = new Coordinate(coordinate.x, coordinate.y + (i - 1));
-
-            return new InlinePixels(from, to);
+        if (horizontalLength > verticalLength) {
+            return new InlinePixels(
+                    new Coordinate(coordinate.x - lengthLeft, coordinate.y),
+                    new Coordinate(coordinate.x + lengthRight, coordinate.y)
+            );
         } else {
-            // Horizontal
-
-            int i;
-            int color;
-
-            i = 0;
-            do {
-                i--;
-                try {
-                    color = image.get(coordinate.x + i, coordinate.y);
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    break;
-                }
-            } while (initialColor == color);
-
-            Coordinate from = new Coordinate(coordinate.x + (i + 1), coordinate.y);
-
-            i = 0;
-            do {
-                i++;
-                try {
-                    color = image.get(coordinate.x + i, coordinate.y);
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    break;
-                }
-            } while (initialColor == color);
-
-            Coordinate to = new Coordinate(coordinate.x + (i - 1), coordinate.y);
-
-            return new InlinePixels(from, to);
+            return new InlinePixels(
+                    new Coordinate(coordinate.x, coordinate.y - lengthUp),
+                    new Coordinate(coordinate.x, coordinate.y + lengthDown)
+            );
         }
     }
 
-    private Coordinate computeBestLocationForDrawing(Coordinate coordinate)
+    private Coordinate computeBestLocationForDrawing(InlinePixels ip)
     {
-        Coordinate up = new Coordinate(coordinate.x, coordinate.y - 1);
-        Coordinate down = new Coordinate(coordinate.x, coordinate.y + 1);
-        Coordinate left = new Coordinate(coordinate.x - 1, coordinate.y);
-        Coordinate right = new Coordinate(coordinate.x + 1, coordinate.y);
+        Map<Coordinate, Integer> locations = new HashMap<>();
 
-        if (isWithinBounds(up)) {
-            return up;
-        } else if (isWithinBounds(down)) {
-            return down;
-        } else if (isWithinBounds(left)) {
-            return left;
-        } else if (isWithinBounds(right)) {
-            return right;
+        if (ip.getOrientation() == InlinePixels.Orientation.HORIZONTAL) {
+            Coordinate c1;
+            Coordinate c2;
+            if (ip.from.x < ip.to.x) {
+                c1 = new Coordinate(ip.from.x - 1, ip.from.y);
+                c2 = new Coordinate(ip.to.x + 1, ip.from.y);
+            } else {
+                c1 = new Coordinate(ip.from.x + 1, ip.from.y);
+                c2 = new Coordinate(ip.to.x - 1, ip.from.y);
+            }
+            locations.put(c1, getCostGoTo(c1));
+            locations.put(c2, getCostGoTo(c2));
+        } else if (ip.getOrientation() == InlinePixels.Orientation.VERTICAL) {
+            Coordinate c1;
+            Coordinate c2;
+            if (ip.from.y < ip.to.y) {
+                c1 = new Coordinate(ip.from.x, ip.from.y - 1);
+                c2 = new Coordinate(ip.from.x, ip.to.y + 1);
+            } else {
+                c1 = new Coordinate(ip.from.x, ip.from.y + 1);
+                c2 = new Coordinate(ip.from.x, ip.to.y - 1);
+            }
+            locations.put(c1, getCostGoTo(c1));
+            locations.put(c2, getCostGoTo(c2));
+        } else if (ip.getOrientation() == InlinePixels.Orientation.SINGLE) {
+            Coordinate c1 = new Coordinate(ip.from.x + 1, ip.from.y);
+            Coordinate c2 = new Coordinate(ip.from.x - 1, ip.from.y);
+            Coordinate c3 = new Coordinate(ip.from.x, ip.from.y + 1);
+            Coordinate c4 = new Coordinate(ip.from.x, ip.from.y - 1);
+
+            locations.put(c1, getCostGoTo(c1));
+            locations.put(c2, getCostGoTo(c2));
+            locations.put(c3, getCostGoTo(c3));
+            locations.put(c4, getCostGoTo(c4));
         }
 
-        System.err.println("NO SUITABLE LOCATION AVAILABLE FOR DRAWING " + coordinate);
+        locations = locations.entrySet().stream()
+                .filter(e -> isWithinBounds(e.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        return null;
+        if (locations.size() == 0) {
+            if (ip.getOrientation() == InlinePixels.Orientation.HORIZONTAL) {
+                Coordinate c1 = new Coordinate(ip.from.x, ip.from.y - 1);
+                Coordinate c2 = new Coordinate(ip.from.x, ip.from.y + 1);
+                locations.put(c1, getCostGoTo(c1));
+                locations.put(c2, getCostGoTo(c2));
+            } else if (ip.getOrientation() == InlinePixels.Orientation.VERTICAL) {
+                Coordinate c1 = new Coordinate(ip.from.x - 1, ip.from.y);
+                Coordinate c2 = new Coordinate(ip.from.x + 1, ip.from.y);
+                locations.put(c1, getCostGoTo(c1));
+                locations.put(c2, getCostGoTo(c2));
+            }
+        }
+
+        locations = locations.entrySet().stream()
+                .filter(e -> isWithinBounds(e.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        return Collections.max(locations.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
     private boolean isWithinBounds(Coordinate c)
@@ -497,36 +459,50 @@ public class Compressor
             try {
                 initialColor = image.get(x, y + (incr * offset));
             } catch (ArrayIndexOutOfBoundsException e) {
-                return -999;
+                return 0;
             }
 
-            if (initialColor == drawing.background) {
-                return -1;
+            if (initialColor != getCurrentColor()) {
+                return 0;
             }
 
             int i = -1;
             int color;
             int containsCount = 0;
-            int lastIBeforeContains = -1;
-            do {
+            int lastIBeforeContains = i;
+            while (true) {
                 i++;
+
                 int newY = y + (incr * (i + offset));
+                Coordinate newC = new Coordinate(x, newY);
+
                 try {
                     color = image.get(x, newY);
                 } catch (ArrayIndexOutOfBoundsException e) {
                     break;
                 }
 
-                if (drawnCoordinates.contains(new Coordinate(x, newY))) {
+                if (color == drawing.background) {
+                    break;
+                }
+
+                if (initialColor != color) {
+                    if (!drawnCoordinates.contains(newC)) {
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (drawnCoordinates.contains(newC)) {
                     containsCount++;
-                    if(lastIBeforeContains == -1) {
+                    if (lastIBeforeContains == -1) {
                         lastIBeforeContains = i;
                     }
-                    continue;
                 }
-            } while (initialColor == color);
+            }
 
-            if (containsCount / i > containsCap) {
+            if (i > 0 && containsCount / i > containsCap) {
                 return lastIBeforeContains;
             }
 
@@ -538,36 +514,51 @@ public class Compressor
             try {
                 initialColor = image.get(x + (incr * offset), y);
             } catch (ArrayIndexOutOfBoundsException e) {
-                return -999;
+                return 0;
             }
 
-            if (initialColor == drawing.background) {
-                return -1;
+            if (initialColor != getCurrentColor()) {
+                return 0;
             }
+
 
             int i = -1;
             int color;
             int containsCount = 0;
-            int lastIBeforeContains = -1;
-            do {
+            int lastIBeforeContains = i;
+            while (true) {
                 i++;
+
                 int newX = x + (incr * (i + offset));
+                Coordinate newC = new Coordinate(newX, y);
+
                 try {
                     color = image.get(newX, y);
                 } catch (ArrayIndexOutOfBoundsException e) {
                     break;
                 }
 
-                if (drawnCoordinates.contains(new Coordinate(newX, y))) {
+                if (color == drawing.background) {
+                    break;
+                }
+
+                if (initialColor != color) {
+                    if (!drawnCoordinates.contains(newC)) {
+                        continue;
+                    }
+
+                    break;
+                }
+
+                if (drawnCoordinates.contains(newC)) {
                     containsCount++;
-                    if(lastIBeforeContains == -1) {
+                    if (lastIBeforeContains == -1) {
                         lastIBeforeContains = i;
                     }
-                    continue;
                 }
-            } while (initialColor == color);
+            }
 
-            if (containsCount / i > containsCap) {
+            if (i > 0 && containsCount / i > containsCap) {
                 return lastIBeforeContains;
             }
 
