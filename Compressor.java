@@ -35,6 +35,27 @@ class Coordinate
     {
         return x + "," + y;
     }
+
+    public Coordinate getNeighbour(Direction direction)
+    {
+        if (direction == Direction.UP) {
+            return new Coordinate(this.x, this.y - 1);
+        }
+
+        if (direction == Direction.RIGHT) {
+            return new Coordinate(this.x + 1, this.y);
+        }
+
+        if (direction == Direction.DOWN) {
+            return new Coordinate(this.x, this.y + 1);
+        }
+
+        if (direction == Direction.LEFT) {
+            return new Coordinate(this.x - 1, this.y);
+        }
+
+        return null;
+    }
 }
 
 class DirectionLength
@@ -355,45 +376,34 @@ public class Compressor
 
     private Coordinate computeBestLocationForDrawing(InlinePixels ip)
     {
-        Map<Coordinate, Integer> locations = new HashMap<>();
+        List<Coordinate> locations = new ArrayList<>();
 
         if (ip.getOrientation() == Orientation.HORIZONTAL) {
-            Coordinate c1;
-            Coordinate c2;
             if (ip.getDirection() == Direction.RIGHT) {
-                c1 = new Coordinate(ip.from.x - 1, ip.from.y);
-                c2 = new Coordinate(ip.to.x + 1, ip.to.y);
+                locations.add(ip.from.getNeighbour(Direction.LEFT));
+                locations.add(ip.to.getNeighbour(Direction.RIGHT));
             } else {
-                c1 = new Coordinate(ip.from.x + 1, ip.from.y);
-                c2 = new Coordinate(ip.to.x - 1, ip.to.y);
+                locations.add(ip.from.getNeighbour(Direction.RIGHT));
+                locations.add(ip.to.getNeighbour(Direction.LEFT));
             }
-            locations.put(c1, getCostGoTo(c1));
-            locations.put(c2, getCostGoTo(c2));
         } else if (ip.getOrientation() == Orientation.VERTICAL) {
-            Coordinate c1;
-            Coordinate c2;
             if (ip.getDirection() == Direction.DOWN) {
-                c1 = new Coordinate(ip.from.x, ip.from.y - 1);
-                c2 = new Coordinate(ip.to.x, ip.to.y + 1);
+                locations.add(ip.from.getNeighbour(Direction.UP));
+                locations.add(ip.to.getNeighbour(Direction.DOWN));
             } else {
-                c1 = new Coordinate(ip.from.x, ip.from.y + 1);
-                c2 = new Coordinate(ip.to.x, ip.to.y - 1);
+                locations.add(ip.from.getNeighbour(Direction.DOWN));
+                locations.add(ip.to.getNeighbour(Direction.UP));
             }
-            locations.put(c1, getCostGoTo(c1));
-            locations.put(c2, getCostGoTo(c2));
         } else if (ip.getOrientation() == Orientation.SINGLE) {
-            Coordinate c1 = new Coordinate(ip.from.x + 1, ip.from.y);
-            Coordinate c2 = new Coordinate(ip.from.x - 1, ip.from.y);
-            Coordinate c3 = new Coordinate(ip.from.x, ip.from.y + 1);
-            Coordinate c4 = new Coordinate(ip.from.x, ip.from.y - 1);
-
-            locations.put(c1, getCostGoTo(c1));
-            locations.put(c2, getCostGoTo(c2));
-            locations.put(c3, getCostGoTo(c3));
-            locations.put(c4, getCostGoTo(c4));
+            locations.add(ip.from.getNeighbour(Direction.UP));
+            locations.add(ip.from.getNeighbour(Direction.RIGHT));
+            locations.add(ip.from.getNeighbour(Direction.DOWN));
+            locations.add(ip.from.getNeighbour(Direction.LEFT));
         }
 
-        return Collections.min(locations.entrySet(), Map.Entry.comparingByValue()).getKey();
+        Map<Coordinate, Integer> locationsCost = locations.stream().collect(Collectors.toMap(c -> c, this::getCostGoTo));
+
+        return Collections.min(locationsCost.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
     private boolean isWithinBounds(Coordinate c)
