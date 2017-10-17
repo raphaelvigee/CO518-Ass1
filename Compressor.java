@@ -83,6 +83,11 @@ class InlinePixels
 
         return null;
     }
+
+    public int length()
+    {
+        return Math.abs((from.x - to.x) + (from.y - to.y));
+    }
 }
 
 public class Compressor
@@ -204,21 +209,21 @@ public class Compressor
         Set<Coordinate> standaloneCoordinates = this.getDrawableCoordinates();
         standaloneCoordinates.removeAll(drawnCoordinates);
 
-        HashMap<Coordinate, Double> coordinateDistance = new HashMap<>();
+        HashMap<InlinePixels, Integer> inlinePixelGain = new HashMap<>();
         for (Coordinate c : standaloneCoordinates) {
             if (image.get(c.x, c.y) == getCurrentColor()) {
-                double distance = getCostGoTo(c);
-                coordinateDistance.put(c, distance);
+                int cost = getCostGoTo(c);
+                InlinePixels ip = this.computeBestInlinePixels(c);
+
+                inlinePixelGain.put(ip, ip.length() - cost);
             }
         }
 
-        if (coordinateDistance.size() == 0) {
+        if (inlinePixelGain.size() == 0) {
             return false;
         }
 
-        Coordinate closest = Collections.min(coordinateDistance.entrySet(), Map.Entry.comparingByValue()).getKey();
-
-        InlinePixels ip = this.computeBestInlinePixels(closest);
+        InlinePixels ip = Collections.max(inlinePixelGain.entrySet(), Map.Entry.comparingByValue()).getKey();
 
         Coordinate target = computeBestLocationForDrawing(ip);
 
@@ -315,36 +320,6 @@ public class Compressor
             locations.put(c3, getCostGoTo(c3));
             locations.put(c4, getCostGoTo(c4));
         }
-
-        locations = locations.entrySet().stream()
-                .filter(e -> isWithinBounds(e.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-        if (locations.size() == 0) {
-            if (ip.getOrientation() == InlinePixels.Orientation.HORIZONTAL) {
-                Coordinate c1 = new Coordinate(ip.from.x, ip.from.y - 1);
-                Coordinate c2 = new Coordinate(ip.from.x, ip.from.y + 1);
-                Coordinate c3 = new Coordinate(ip.to.x, ip.to.y - 1);
-                Coordinate c4 = new Coordinate(ip.to.x, ip.to.y + 1);
-                locations.put(c1, getCostGoTo(c1));
-                locations.put(c2, getCostGoTo(c2));
-                locations.put(c3, getCostGoTo(c3));
-                locations.put(c4, getCostGoTo(c4));
-            } else if (ip.getOrientation() == InlinePixels.Orientation.VERTICAL) {
-                Coordinate c1 = new Coordinate(ip.from.x - 1, ip.from.y);
-                Coordinate c2 = new Coordinate(ip.from.x + 1, ip.from.y);
-                Coordinate c3 = new Coordinate(ip.to.x - 1, ip.to.y);
-                Coordinate c4 = new Coordinate(ip.to.x + 1, ip.to.y);
-                locations.put(c1, getCostGoTo(c1));
-                locations.put(c2, getCostGoTo(c2));
-                locations.put(c3, getCostGoTo(c3));
-                locations.put(c4, getCostGoTo(c4));
-            }
-        }
-
-        locations = locations.entrySet().stream()
-                .filter(e -> isWithinBounds(e.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         return Collections.min(locations.entrySet(), Map.Entry.comparingByValue()).getKey();
     }

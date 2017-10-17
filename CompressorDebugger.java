@@ -39,7 +39,7 @@ class PixelCellRenderer extends DefaultTableCellRenderer
         label.setForeground(new Color(0, 0, 0, 0));
 
         if (compressor.cursor.equals(new Coordinate(col - 1, row - 1))) {
-            Border border = BorderFactory.createLineBorder(Color.BLUE, 2);
+            Border border = BorderFactory.createLineBorder(Color.magenta, 2);
             label.setBorder(border);
         }
 
@@ -54,6 +54,7 @@ public class CompressorDebugger extends Compressor
     private DefaultTableModel tableModel;
 
     private JLabel nbCommands;
+    private JLabel cursorPosition;
 
     private int imageColumns;
 
@@ -168,20 +169,23 @@ public class CompressorDebugger extends Compressor
         nbCommands = new JLabel();
         infosPanel.add(nbCommands);
 
+        cursorPosition = new JLabel();
+        infosPanel.add(cursorPosition);
+
         return frame;
     }
 
     @Override
     protected void addCommand(Direction direction, int distance, boolean paint, int color)
     {
+        super.addCommand(direction, distance, paint, color);
+        this.update();
+
         try {
             Thread.sleep(idleTime);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
-        super.addCommand(direction, distance, paint, color);
-        this.update();
     }
 
     @Override
@@ -215,6 +219,7 @@ public class CompressorDebugger extends Compressor
     public void update()
     {
         nbCommands.setText("Nb Commands: " + this.drawing.commands.size());
+        cursorPosition.setText("Cursor: " + this.cursor);
 
         Drawing d = this.drawing;
 
