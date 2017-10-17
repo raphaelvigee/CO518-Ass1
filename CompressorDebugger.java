@@ -106,8 +106,6 @@ public class CompressorDebugger extends Compressor
 
     private int cellSize = 15;
 
-    private int currentCommandIndex = -1;
-
     CompressorDebugger(Image image)
     {
         super(image);
@@ -281,41 +279,38 @@ public class CompressorDebugger extends Compressor
         nbCommands.setText("Nb Commands: " + this.drawing.commands.size());
         cursorPosition.setText("Cursor: " + this.cursor);
 
-        Drawing d = this.drawing;
-
-        if (currentCommandIndex != -1) {
-            Drawing tmpDrawing = new Drawing(d.width, d.height, d.background);
-            for (int i = 0; i <= currentCommandIndex; i++) {
-                tmpDrawing.addCommand(d.commands.get(i));
+        // Following commands
+        if(true) {
+            Image image = null;
+            try {
+                image = this.drawing.draw();
+            } catch (BadCommand badCommand) {
+                badCommand.printStackTrace();
             }
-        }
 
-        Image image = null;
-        try {
-            image = d.draw();
-        } catch (BadCommand badCommand) {
-            badCommand.printStackTrace();
-        }
+            for (int y = 0; y < imageRows; y++) {
+                for (int x = 0; x < imageColumns; x++) {
+                    liveTableModel.setValueAt(image.get(x, y), y + 1, x + 1);
+                }
+            }
 
-//        // Following commands
-//        for (int y = 0; y < imageRows; y++) {
-//            for (int x = 0; x < imageColumns; x++) {
-//                liveTableModel.setValueAt(image.get(x, y), y + 1, x + 1);
-//            }
-//        }
+        }
 
         // Drawn Coordinates
-        for (int y = 0; y < imageRows; y++) {
-            for (int x = 0; x < imageColumns; x++) {
-                Coordinate c = new Coordinate(x, y);
-                Integer v = null;
-                if (drawnCoordinates.contains(c)) {
-                    v = image.get(x, y);
-                }
+        if(false) {
+            for (int y = 0; y < imageRows; y++) {
+                for (int x = 0; x < imageColumns; x++) {
+                    Coordinate c = new Coordinate(x, y);
+                    Integer v = null;
+                    if (drawnCoordinates.contains(c)) {
+                        v = image.get(x, y);
+                    }
 
-                liveTableModel.setValueAt(v, y + 1, x + 1);
+                    liveTableModel.setValueAt(v, y + 1, x + 1);
+                }
             }
         }
+
 
 
         this.updateExpected();

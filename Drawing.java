@@ -4,6 +4,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 
+enum Orientation
+{
+    HORIZONTAL, VERTICAL, SINGLE
+}
+
 enum Direction
 {
     UP {
@@ -29,6 +34,19 @@ enum Direction
         {
             return "right";
         }
+    };
+
+    public Orientation getOrientation()
+    {
+        if (this == UP || this == DOWN) {
+            return Orientation.VERTICAL;
+        }
+
+        if (this == LEFT || this == RIGHT) {
+            return Orientation.HORIZONTAL;
+        }
+
+        return null;
     }
 }
 

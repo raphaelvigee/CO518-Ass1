@@ -56,11 +56,6 @@ class InlinePixels
 
     Coordinate to;
 
-    enum Orientation
-    {
-        SINGLE, HORIZONTAL, VERTICAL
-    }
-
     InlinePixels(Coordinate from, Coordinate to)
     {
         this.from = from;
@@ -86,7 +81,7 @@ class InlinePixels
 
     public int length()
     {
-        return Math.abs((from.x - to.x) + (from.y - to.y));
+        return Math.abs((from.x - to.x) + (from.y - to.y)) + 1;
     }
 
     public boolean contains(Image image, int color)
@@ -118,6 +113,25 @@ class InlinePixels
         }
 
         return false;
+    }
+
+    public Direction getDirection()
+    {
+        if (getOrientation() == Orientation.HORIZONTAL) {
+            if (from.x < to.x) {
+                return Direction.RIGHT;
+            } else {
+                return Direction.LEFT;
+            }
+        } else if (getOrientation() == Orientation.VERTICAL) {
+            if (from.y < to.y) {
+                return Direction.DOWN;
+            } else {
+                return Direction.UP;
+            }
+        }
+
+        return null;
     }
 }
 
@@ -176,7 +190,7 @@ public class Compressor
         int limit = 10000;
         int i = 0;
         while (!isDone() && i < limit) {
-            while(isPaused()){
+            while (isPaused()) {
                 try {
                     Thread.sleep(1);
                 } catch (InterruptedException e) {
@@ -343,10 +357,10 @@ public class Compressor
     {
         Map<Coordinate, Integer> locations = new HashMap<>();
 
-        if (ip.getOrientation() == InlinePixels.Orientation.HORIZONTAL) {
+        if (ip.getOrientation() == Orientation.HORIZONTAL) {
             Coordinate c1;
             Coordinate c2;
-            if (ip.from.x < ip.to.x) {
+            if (ip.getDirection() == Direction.RIGHT) {
                 c1 = new Coordinate(ip.from.x - 1, ip.from.y);
                 c2 = new Coordinate(ip.to.x + 1, ip.to.y);
             } else {
@@ -355,10 +369,10 @@ public class Compressor
             }
             locations.put(c1, getCostGoTo(c1));
             locations.put(c2, getCostGoTo(c2));
-        } else if (ip.getOrientation() == InlinePixels.Orientation.VERTICAL) {
+        } else if (ip.getOrientation() == Orientation.VERTICAL) {
             Coordinate c1;
             Coordinate c2;
-            if (ip.from.y < ip.to.y) {
+            if (ip.getDirection() == Direction.DOWN) {
                 c1 = new Coordinate(ip.from.x, ip.from.y - 1);
                 c2 = new Coordinate(ip.to.x, ip.to.y + 1);
             } else {
@@ -367,7 +381,7 @@ public class Compressor
             }
             locations.put(c1, getCostGoTo(c1));
             locations.put(c2, getCostGoTo(c2));
-        } else if (ip.getOrientation() == InlinePixels.Orientation.SINGLE) {
+        } else if (ip.getOrientation() == Orientation.SINGLE) {
             Coordinate c1 = new Coordinate(ip.from.x + 1, ip.from.y);
             Coordinate c2 = new Coordinate(ip.from.x - 1, ip.from.y);
             Coordinate c3 = new Coordinate(ip.from.x, ip.from.y + 1);
@@ -387,6 +401,16 @@ public class Compressor
         return c.x >= 0 && c.x <= image.getWidth() && c.y >= 0 && c.y < image.getHeight();
     }
 
+    private boolean isForward(Direction d)
+    {
+        return d == Direction.DOWN || d == Direction.RIGHT;
+    }
+
+    private int getIncr(Direction d)
+    {
+        return isForward(d) ? 1 : -1;
+    }
+
     protected void addCommand(Direction direction, int distance, boolean paint, int color)
     {
         StringBuilder sb = new StringBuilder(direction.toString() + " " + distance);
@@ -397,44 +421,27 @@ public class Compressor
 
         drawing.addCommand(new DrawingCommand(sb.toString()));
 
-        if (direction == Direction.UP || direction == Direction.DOWN) {
-            boolean forward = direction == Direction.DOWN;
+        boolean forward = isForward(direction);
+        int incr = getIncr(direction);
+
+        int relativeDistance = distance * incr;
+
+        if (direction.getOrientation() == Orientation.VERTICAL) {
             if (paint) {
-                if (forward) {
-                    for (int py = cursor.y; py < cursor.y + distance; py++) {
-                        drawnCoordinates.add(new Coordinate(cursor.x, py + 1));
-                    }
-                } else {
-                    for (int py = cursor.y; py > cursor.y - distance; py--) {
-                        drawnCoordinates.add(new Coordinate(cursor.x, py - 1));
-                    }
+                for (int py = cursor.y; forward ? (py < cursor.y + relativeDistance) : (py > cursor.y + relativeDistance); py += incr) {
+                    drawnCoordinates.add(new Coordinate(cursor.x, py + incr));
                 }
             }
 
-            if (forward) {
-                cursor.y += distance;
-            } else {
-                cursor.y -= distance;
-            }
-        } else if (direction == Direction.LEFT || direction == Direction.RIGHT) {
-            boolean forward = direction == Direction.RIGHT;
+            cursor.y += relativeDistance;
+        } else if (direction.getOrientation() == Orientation.HORIZONTAL) {
             if (paint) {
-                if (forward) {
-                    for (int px = cursor.x; px < cursor.x + distance; px++) {
-                        drawnCoordinates.add(new Coordinate(px + 1, cursor.y));
-                    }
-                } else {
-                    for (int px = cursor.x; px > cursor.x - distance; px--) {
-                        drawnCoordinates.add(new Coordinate(px - 1, cursor.y));
-                    }
+                for (int px = cursor.x; forward ? (px < cursor.x + relativeDistance) : (px > cursor.x + relativeDistance); px += incr) {
+                    drawnCoordinates.add(new Coordinate(px + incr, cursor.y));
                 }
             }
 
-            if (forward) {
-                cursor.x += distance;
-            } else {
-                cursor.x -= distance;
-            }
+            cursor.x += relativeDistance;
         }
     }
 
@@ -470,7 +477,6 @@ public class Compressor
         return directions;
     }
 
-    @SuppressWarnings("Duplicates")
     private int calculateDirectionLength(Coordinate coordinate, Direction direction, int offset)
     {
         int x = coordinate.x;
@@ -478,116 +484,67 @@ public class Compressor
 
         double containsCap = 70 / 100;
 
-        if (direction == Direction.UP || direction == Direction.DOWN) {
-            int incr = direction == Direction.UP ? -1 : 1;
+        int incr = getIncr(direction);
 
-            int i = -1;
-            int color;
-            int containsCount = 0;
-            int lastIBeforeContains = i;
-            boolean containsCurrentColor = false;
-            boolean containsUndrawn = false;
-            while (true) {
-                i++;
+        int i = -1;
+        int color;
+        int containsCount = 0;
+        int lastIBeforeContains = i;
+        boolean containsCurrentColor = false;
+        boolean containsUndrawn = false;
+        while (true) {
+            i++;
 
+            Coordinate newC;
+            if (direction.getOrientation() == Orientation.VERTICAL) {
                 int newY = y + (incr * (i + offset));
-                Coordinate newC = new Coordinate(x, newY);
-
-                try {
-                    color = image.get(x, newY);
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    break;
-                }
-
-                if (color == drawing.background) {
-                    break;
-                }
-
-                if (getCurrentColor() != color) {
-                    if (!drawnCoordinates.contains(newC)) {
-                        continue;
-                    } else {
-                        break;
-                    }
-                }
-
-                containsCurrentColor = true;
-
-                if (drawnCoordinates.contains(newC)) {
-                    containsCount++;
-                    if (lastIBeforeContains == -1) {
-                        lastIBeforeContains = i;
-                    }
-                }else{
-                    containsUndrawn = true;
-                }
-            }
-
-            if (!containsCurrentColor || !containsUndrawn) {
-                return 0;
-            }
-
-            if (i > 0 && containsCount / i > containsCap) {
-                return lastIBeforeContains;
-            }
-
-            return i;
-        } else if (direction == Direction.LEFT || direction == Direction.RIGHT) {
-            int incr = direction == Direction.LEFT ? -1 : 1;
-
-            int i = -1;
-            int color;
-            int containsCount = 0;
-            int lastIBeforeContains = i;
-            boolean containsCurrentColor = false;
-            boolean containsUndrawn = false;
-            while (true) {
-                i++;
-
+                newC = new Coordinate(x, newY);
+            } else if (direction.getOrientation() == Orientation.HORIZONTAL) {
                 int newX = x + (incr * (i + offset));
-                Coordinate newC = new Coordinate(newX, y);
+                newC = new Coordinate(newX, y);
+            } else {
+                System.err.println("Unhandled Orientation");
+                break;
+            }
 
-                try {
-                    color = image.get(newX, y);
-                } catch (ArrayIndexOutOfBoundsException e) {
+            try {
+                color = image.get(newC);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                break;
+            }
+
+            if (color == drawing.background) {
+                break;
+            }
+
+            if (getCurrentColor() != color) {
+                if (!drawnCoordinates.contains(newC)) {
+                    continue;
+                } else {
                     break;
-                }
-
-                if (color == drawing.background) {
-                    break;
-                }
-
-                if (getCurrentColor() != color) {
-                    if (!drawnCoordinates.contains(newC)) {
-                        continue;
-                    }
-
-                    break;
-                }
-
-                containsCurrentColor = true;
-
-                if (drawnCoordinates.contains(newC)) {
-                    containsCount++;
-                    if (lastIBeforeContains == -1) {
-                        lastIBeforeContains = i;
-                    }
-                }else{
-                    containsUndrawn = true;
                 }
             }
 
-            if (!containsCurrentColor || !containsUndrawn) {
-                return 0;
-            }
+            containsCurrentColor = true;
 
-            if (i > 0 && containsCount / i > containsCap) {
-                return lastIBeforeContains;
+            if (drawnCoordinates.contains(newC)) {
+                containsCount++;
+                if (lastIBeforeContains == -1) {
+                    lastIBeforeContains = i;
+                }
+            } else {
+                containsUndrawn = true;
             }
-
-            return i;
         }
 
-        return 0;
+        if (!containsCurrentColor || !containsUndrawn) {
+            return 0;
+        }
+
+        if (i > 0 && containsCount / i > containsCap) {
+            return lastIBeforeContains;
+        }
+
+        return i;
     }
 }
