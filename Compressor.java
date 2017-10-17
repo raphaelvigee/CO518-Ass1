@@ -1,6 +1,4 @@
-import java.awt.*;
 import java.util.*;
-import java.util.List;
 import java.util.stream.Collectors;
 
 class Coordinate
@@ -90,6 +88,37 @@ class InlinePixels
     {
         return Math.abs((from.x - to.x) + (from.y - to.y));
     }
+
+    public boolean contains(Image image, int color)
+    {
+        if (getOrientation() == Orientation.SINGLE) {
+            return image.get(from) == color;
+        }
+
+        if (getOrientation() == Orientation.VERTICAL) {
+            boolean containsColor = false;
+            for (int y = 0; y < image.getHeight(); y++) {
+                if (image.get(from.x, y) == color) {
+                    containsColor = true;
+                }
+            }
+
+            return containsColor;
+        }
+
+        if (getOrientation() == Orientation.HORIZONTAL) {
+            boolean containsColor = false;
+            for (int x = 0; x < image.getHeight(); x++) {
+                if (image.get(x, from.y) == color) {
+                    containsColor = true;
+                }
+            }
+
+            return containsColor;
+        }
+
+        return false;
+    }
 }
 
 public class Compressor
@@ -99,6 +128,7 @@ public class Compressor
     public Drawing drawing;
 
     public HashSet<Coordinate> drawnCoordinates;
+
     public HashSet<Integer> drawnColors;
 
     public Coordinate cursor = new Coordinate(0, 0);
@@ -143,27 +173,23 @@ public class Compressor
 
     public Drawing compress()
     {
-        Set<Coordinate> drawableCoordinates = this.getDrawableCoordinates();
-
         int limit = 10000;
         int i = 0;
-        while (!drawnCoordinates.containsAll(drawableCoordinates) && i < limit) {
-            if (isPaused()) {
-                continue;
+        while (!isDone() && i < limit) {
+            while(isPaused()){
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
 
             computeNextCommand();
-
-            if(drawnCoordinates.containsAll(drawableCoordinates)) {
-                cleanDrawnCoordinates();
-            }
-
             i++;
         }
 
         if (i == limit) {
             System.err.println("/!\\ EXIT BECAUSE OF PRESUMED INFINITE LOOP /!\\");
-            System.exit(1);
         }
 
         return drawing;
@@ -177,14 +203,15 @@ public class Compressor
     public void nextColor()
     {
         drawnColors.add(colors.get(currentColorIndex));
-        cleanDrawnCoordinates();
 
-        currentColorIndex++;
-
+        if (currentColorIndex + 1 < colors.size()) {
+            currentColorIndex++;
+        }
     }
 
-    public void cleanDrawnCoordinates() {
-        drawnCoordinates.removeIf(c -> !drawnColors.contains(image.get(c)) && image.get(c) != getCurrentColor());
+    public boolean cleanDrawnCoordinates()
+    {
+        return !drawnCoordinates.removeIf(c -> !drawnColors.contains(image.get(c)) && image.get(c) != getCurrentColor());
     }
 
     public boolean isPaused()
@@ -215,11 +242,22 @@ public class Compressor
             boolean result = this.computeNearestStandalone();
 
             if (!result) {
-                nextColor();
+                if (cleanDrawnCoordinates()) {
+                    nextColor();
+                }
             }
         } else {
             addCommand(dl.direction, dl.length, true, getCurrentColor());
         }
+
+        if (isDone()) {
+            cleanDrawnCoordinates();
+        }
+    }
+
+    private boolean isDone()
+    {
+        return drawnCoordinates.containsAll(getDrawableCoordinates());
     }
 
     private boolean computeNearestStandalone()
@@ -233,7 +271,9 @@ public class Compressor
                 int cost = getCostGoTo(c);
                 InlinePixels ip = this.computeBestInlinePixels(c);
 
-                inlinePixelGain.put(ip, ip.length() - cost);
+                if (ip.contains(image, getCurrentColor())) {
+                    inlinePixelGain.put(ip, ip.length() - cost);
+                }
             }
         }
 
@@ -445,6 +485,8 @@ public class Compressor
             int color;
             int containsCount = 0;
             int lastIBeforeContains = i;
+            boolean containsCurrentColor = false;
+            boolean containsUndrawn = false;
             while (true) {
                 i++;
 
@@ -469,12 +511,20 @@ public class Compressor
                     }
                 }
 
+                containsCurrentColor = true;
+
                 if (drawnCoordinates.contains(newC)) {
                     containsCount++;
                     if (lastIBeforeContains == -1) {
                         lastIBeforeContains = i;
                     }
+                }else{
+                    containsUndrawn = true;
                 }
+            }
+
+            if (!containsCurrentColor || !containsUndrawn) {
+                return 0;
             }
 
             if (i > 0 && containsCount / i > containsCap) {
@@ -489,6 +539,8 @@ public class Compressor
             int color;
             int containsCount = 0;
             int lastIBeforeContains = i;
+            boolean containsCurrentColor = false;
+            boolean containsUndrawn = false;
             while (true) {
                 i++;
 
@@ -513,12 +565,20 @@ public class Compressor
                     break;
                 }
 
+                containsCurrentColor = true;
+
                 if (drawnCoordinates.contains(newC)) {
                     containsCount++;
                     if (lastIBeforeContains == -1) {
                         lastIBeforeContains = i;
                     }
+                }else{
+                    containsUndrawn = true;
                 }
+            }
+
+            if (!containsCurrentColor || !containsUndrawn) {
+                return 0;
             }
 
             if (i > 0 && containsCount / i > containsCap) {

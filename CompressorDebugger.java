@@ -1,5 +1,6 @@
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -41,9 +42,10 @@ class PixelCellRenderer extends DefaultTableCellRenderer
             Color bgColor = new Color(Image.colours[(int) value]);
             label.setBackground(bgColor);
             label.setForeground(contrastColor(bgColor));
+        } else {
+            label.setBackground(new Color(0, 0, 0, 0));
+            label.setForeground(Color.BLACK);
         }
-
-//        label.setForeground(new Color(0, 0, 0, 0));
 
         if (compressor.cursor.equals(new Coordinate(col - 1, row - 1))) {
             Border border = BorderFactory.createLineBorder(Color.magenta, 2);
@@ -53,13 +55,12 @@ class PixelCellRenderer extends DefaultTableCellRenderer
         return label;
     }
 
-    Color contrastColor(Color color)
+    private Color contrastColor(Color color)
     {
-        int d = 0;
-
         // Counting the perceptive luminance - human eye favors green color...
-        double a = 1 - ( 0.299 * color.getRed() + 0.587 * color.getGreen() + 0.114 * color.getBlue())/255;
+        double a = 1 - (0.299 * color.getRed() + 0.587 * color.getGreen() + 0.114 * color.getBlue()) / 255;
 
+        int d;
         if (a < 0.5)
             d = 0; // bright colors - black font
         else
@@ -129,7 +130,7 @@ public class CompressorDebugger extends Compressor
         tableWidth = tableColumns * cellSize;
         tableHeight = tableRows * cellSize;
 
-        frameWidth = tableWidth * 2 + 150;
+        frameWidth = tableWidth * 2 + 150 + 3;
         frameHeight = tableHeight + 50;
 
         // Creating Frame
@@ -145,6 +146,7 @@ public class CompressorDebugger extends Compressor
         JPanel tables = new JPanel();
         tables.setPreferredSize(new Dimension(tableWidth * 2, tableHeight));
         tables.setLayout(new BorderLayout());
+        tables.setBackground(Color.ORANGE);
         frame.add(tables, BorderLayout.CENTER);
 
         // Live table
@@ -187,6 +189,7 @@ public class CompressorDebugger extends Compressor
         expectedTable.setFocusable(false);
         expectedTable.setRowSelectionAllowed(false);
         expectedTable.setDefaultRenderer(Object.class, new PixelCellRenderer(this));
+        expectedTable.setBorder(new EmptyBorder(0, 0, 0, 3));
         tables.add(expectedTable, BorderLayout.WEST);
 
         // Controls
@@ -294,11 +297,26 @@ public class CompressorDebugger extends Compressor
             badCommand.printStackTrace();
         }
 
+//        // Following commands
+//        for (int y = 0; y < imageRows; y++) {
+//            for (int x = 0; x < imageColumns; x++) {
+//                liveTableModel.setValueAt(image.get(x, y), y + 1, x + 1);
+//            }
+//        }
+
+        // Drawn Coordinates
         for (int y = 0; y < imageRows; y++) {
             for (int x = 0; x < imageColumns; x++) {
-                liveTableModel.setValueAt(image.get(x, y), y + 1, x + 1);
+                Coordinate c = new Coordinate(x, y);
+                Integer v = null;
+                if (drawnCoordinates.contains(c)) {
+                    v = image.get(x, y);
+                }
+
+                liveTableModel.setValueAt(v, y + 1, x + 1);
             }
         }
+
 
         this.updateExpected();
     }
