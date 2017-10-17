@@ -1,4 +1,6 @@
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 class Coordinate
@@ -97,12 +99,13 @@ public class Compressor
     public Drawing drawing;
 
     public HashSet<Coordinate> drawnCoordinates;
+    public HashSet<Integer> drawnColors;
 
     public Coordinate cursor = new Coordinate(0, 0);
 
     public List<Integer> colors;
 
-    public int currentColorIndex;
+    public int currentColorIndex = 0;
 
     Compressor(Image image)
     {
@@ -131,9 +134,11 @@ public class Compressor
 
         // Takes most present color
         int background = Collections.max(colorsCount.entrySet(), Map.Entry.comparingByValue()).getKey();
-        this.nextColor();
         this.drawing = new Drawing(h, w, background);
         this.drawnCoordinates = new HashSet<>();
+        this.drawnColors = new HashSet<>();
+        this.drawnColors.add(background);
+        this.nextColor();
     }
 
     public Drawing compress()
@@ -148,6 +153,11 @@ public class Compressor
             }
 
             computeNextCommand();
+
+            if(drawnCoordinates.containsAll(drawableCoordinates)) {
+                cleanDrawnCoordinates();
+            }
+
             i++;
         }
 
@@ -166,7 +176,15 @@ public class Compressor
 
     public void nextColor()
     {
+        drawnColors.add(colors.get(currentColorIndex));
+        cleanDrawnCoordinates();
+
         currentColorIndex++;
+
+    }
+
+    public void cleanDrawnCoordinates() {
+        drawnCoordinates.removeIf(c -> !drawnColors.contains(image.get(c)) && image.get(c) != getCurrentColor());
     }
 
     public boolean isPaused()
@@ -423,17 +441,6 @@ public class Compressor
         if (direction == Direction.UP || direction == Direction.DOWN) {
             int incr = direction == Direction.UP ? -1 : 1;
 
-            int initialColor;
-            try {
-                initialColor = image.get(x, y + (incr * offset));
-            } catch (ArrayIndexOutOfBoundsException e) {
-                return 0;
-            }
-
-            if (initialColor != getCurrentColor()) {
-                return 0;
-            }
-
             int i = -1;
             int color;
             int containsCount = 0;
@@ -454,7 +461,7 @@ public class Compressor
                     break;
                 }
 
-                if (initialColor != color) {
+                if (getCurrentColor() != color) {
                     if (!drawnCoordinates.contains(newC)) {
                         continue;
                     } else {
@@ -478,18 +485,6 @@ public class Compressor
         } else if (direction == Direction.LEFT || direction == Direction.RIGHT) {
             int incr = direction == Direction.LEFT ? -1 : 1;
 
-            int initialColor;
-            try {
-                initialColor = image.get(x + (incr * offset), y);
-            } catch (ArrayIndexOutOfBoundsException e) {
-                return 0;
-            }
-
-            if (initialColor != getCurrentColor()) {
-                return 0;
-            }
-
-
             int i = -1;
             int color;
             int containsCount = 0;
@@ -510,7 +505,7 @@ public class Compressor
                     break;
                 }
 
-                if (initialColor != color) {
+                if (getCurrentColor() != color) {
                     if (!drawnCoordinates.contains(newC)) {
                         continue;
                     }
@@ -533,6 +528,6 @@ public class Compressor
             return i;
         }
 
-        return -1;
+        return 0;
     }
 }

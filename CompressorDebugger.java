@@ -25,18 +25,25 @@ class PixelCellRenderer extends DefaultTableCellRenderer
         label.setHorizontalAlignment(SwingConstants.CENTER);
         label.setVerticalAlignment(SwingConstants.CENTER);
 
+        Font labelFont = label.getFont();
+
+        // Set the label's font size to the newly determined size.
+        label.setFont(new Font(labelFont.getName(), Font.PLAIN, 10));
+
         if (row == 0 || col == 0) {
             label.setBackground(Color.white);
             label.setForeground(Color.black);
 
-            return c;
+            return label;
         }
 
         if (value != null) {
-            label.setBackground(new Color(Image.colours[(int) value]));
+            Color bgColor = new Color(Image.colours[(int) value]);
+            label.setBackground(bgColor);
+            label.setForeground(contrastColor(bgColor));
         }
 
-        label.setForeground(new Color(0, 0, 0, 0));
+//        label.setForeground(new Color(0, 0, 0, 0));
 
         if (compressor.cursor.equals(new Coordinate(col - 1, row - 1))) {
             Border border = BorderFactory.createLineBorder(Color.magenta, 2);
@@ -45,15 +52,35 @@ class PixelCellRenderer extends DefaultTableCellRenderer
 
         return label;
     }
+
+    Color contrastColor(Color color)
+    {
+        int d = 0;
+
+        // Counting the perceptive luminance - human eye favors green color...
+        double a = 1 - ( 0.299 * color.getRed() + 0.587 * color.getGreen() + 0.114 * color.getBlue())/255;
+
+        if (a < 0.5)
+            d = 0; // bright colors - black font
+        else
+            d = 255; // dark colors - white font
+
+        return new Color(d, d, d);
+    }
 }
 
 public class CompressorDebugger extends Compressor
 {
-    private JTable table;
+    private JTable liveTable;
 
-    private DefaultTableModel tableModel;
+    private DefaultTableModel liveTableModel;
+
+    private JTable expectedTable;
+
+    private DefaultTableModel expectedTableModel;
 
     private JLabel nbCommands;
+
     private JLabel cursorPosition;
 
     private int imageColumns;
@@ -76,7 +103,7 @@ public class CompressorDebugger extends Compressor
 
     private int idleTime = 250;
 
-    private int cellSize = 20;
+    private int cellSize = 15;
 
     private int currentCommandIndex = -1;
 
@@ -102,10 +129,10 @@ public class CompressorDebugger extends Compressor
         tableWidth = tableColumns * cellSize;
         tableHeight = tableRows * cellSize;
 
-        frameWidth = tableWidth + 150;
+        frameWidth = tableWidth * 2 + 150;
         frameHeight = tableHeight + 50;
 
-        //Creating Frame
+        // Creating Frame
         JFrame frame = new JFrame();
         frame.setLayout(new BorderLayout());
         frame.setSize(frameWidth, frameHeight);
@@ -114,25 +141,55 @@ public class CompressorDebugger extends Compressor
 
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
-        tableModel = new DefaultTableModel();
-        tableModel.setColumnCount(tableColumns);
-        tableModel.setRowCount(tableRows);
+        // Tables container
+        JPanel tables = new JPanel();
+        tables.setPreferredSize(new Dimension(tableWidth * 2, tableHeight));
+        tables.setLayout(new BorderLayout());
+        frame.add(tables, BorderLayout.CENTER);
+
+        // Live table
+        liveTableModel = new DefaultTableModel();
+        liveTableModel.setColumnCount(tableColumns);
+        liveTableModel.setRowCount(tableRows);
 
         for (int x = 0; x < imageColumns; x++) {
-            tableModel.setValueAt(x, 0, x + 1);
+            liveTableModel.setValueAt(x, 0, x + 1);
         }
 
         for (int y = 0; y < imageRows; y++) {
-            tableModel.setValueAt(y, y + 1, 0);
+            liveTableModel.setValueAt(y, y + 1, 0);
         }
 
-        table = new JTable(tableModel);
-        table.setRowHeight(cellSize);
-        table.setFocusable(false);
-        table.setRowSelectionAllowed(false);
-        table.setDefaultRenderer(Object.class, new PixelCellRenderer(this));
-        frame.add(table, BorderLayout.CENTER);
+        liveTable = new JTable(liveTableModel);
+        liveTable.setPreferredSize(new Dimension(tableWidth, tableHeight));
+        liveTable.setRowHeight(cellSize);
+        liveTable.setFocusable(false);
+        liveTable.setRowSelectionAllowed(false);
+        liveTable.setDefaultRenderer(Object.class, new PixelCellRenderer(this));
+        tables.add(liveTable, BorderLayout.EAST);
 
+        // Expected result table
+        expectedTableModel = new DefaultTableModel();
+        expectedTableModel.setColumnCount(tableColumns);
+        expectedTableModel.setRowCount(tableRows);
+
+        for (int x = 0; x < imageColumns; x++) {
+            expectedTableModel.setValueAt(x, 0, x + 1);
+        }
+
+        for (int y = 0; y < imageRows; y++) {
+            expectedTableModel.setValueAt(y, y + 1, 0);
+        }
+
+        expectedTable = new JTable(expectedTableModel);
+        expectedTable.setPreferredSize(new Dimension(tableWidth, tableHeight));
+        expectedTable.setRowHeight(cellSize);
+        expectedTable.setFocusable(false);
+        expectedTable.setRowSelectionAllowed(false);
+        expectedTable.setDefaultRenderer(Object.class, new PixelCellRenderer(this));
+        tables.add(expectedTable, BorderLayout.WEST);
+
+        // Controls
         JPanel controls = new JPanel();
         controls.setPreferredSize(new Dimension(tableWidth, 50));
         controls.setLayout(new BorderLayout());
@@ -239,7 +296,20 @@ public class CompressorDebugger extends Compressor
 
         for (int y = 0; y < imageRows; y++) {
             for (int x = 0; x < imageColumns; x++) {
-                tableModel.setValueAt(image.get(x, y), y + 1, x + 1);
+                liveTableModel.setValueAt(image.get(x, y), y + 1, x + 1);
+            }
+        }
+
+        this.updateExpected();
+    }
+
+    public void updateExpected()
+    {
+        Image image = this.image;
+
+        for (int y = 0; y < imageRows; y++) {
+            for (int x = 0; x < imageColumns; x++) {
+                expectedTableModel.setValueAt(image.get(x, y), y + 1, x + 1);
             }
         }
     }
