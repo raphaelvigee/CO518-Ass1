@@ -1,82 +1,74 @@
 import org.junit.Test;
+import org.junit.experimental.runners.Enclosed;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-import java.util.ArrayList;
-import java.util.Objects;
+import java.util.Arrays;
+import java.util.Collection;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-
+@RunWith(Enclosed.class)
 public class ImageCompressorTest
 {
-    @Test
-    public void image1()
+    public static Collection<Object> data()
     {
-        testWithFile("./test-images/test-image1");
+        return Arrays.asList(new Object[]{
+                "./test-images/test-image1",
+                "./test-images/test-image2",
+                "./test-images/test-image3",
+                "./test-images/test-image4",
+                "./test-images/test-image5",
+                "./pixel-art/pixel-art1",
+                "./pixel-art/pixel-art2",
+                "./pixel-art/pixel-art3",
+                "./pixel-art/pixel-art4",
+                "./pixel-art/pixel-art5",
+                "./pixel-art/pixel-art6",
+        });
     }
 
-    @Test
-    public void image2()
+    @RunWith(Parameterized.class)
+    public static class ParameterizedTests
     {
-        testWithFile("./test-images/test-image2");
+        @Parameter
+        public String filename;
+
+        @Parameters(name = "{0}")
+        public static Collection<Object> data()
+        {
+            return ImageCompressorTest.data();
+        }
+
+        @Test
+        public void file()
+        {
+            ImageCompressorTest.testWithFile(filename);
+        }
     }
 
-    @Test
-    public void image3()
+    public static class SingleTests
     {
-        testWithFile("./test-images/test-image3");
+        @Test
+        public void score()
+        {
+            int score = 0;
+
+            for (Object f : ImageCompressorTest.data()) {
+                Image i = new Image((String) f);
+                Drawing d = i.compress();
+                score += d.commands.size();
+            }
+
+            System.out.println(score);
+        }
     }
 
-    @Test
-    public void image4()
+    public static void testWithFile(String filename)
     {
-        testWithFile("./test-images/test-image4");
-    }
-
-    @Test
-    public void image5()
-    {
-        testWithFile("./test-images/test-image5");
-    }
-
-    @Test
-    public void art1()
-    {
-        testWithFile("./pixel-art/pixel-art1");
-    }
-
-    @Test
-    public void art2()
-    {
-        testWithFile("./pixel-art/pixel-art2");
-    }
-
-    @Test
-    public void art3()
-    {
-        testWithFile("./pixel-art/pixel-art3");
-    }
-
-    @Test
-    public void art4()
-    {
-        testWithFile("./pixel-art/pixel-art4");
-    }
-
-    @Test
-    public void art5()
-    {
-        testWithFile("./pixel-art/pixel-art5");
-    }
-
-    @Test
-    public void art6()
-    {
-        testWithFile("./pixel-art/pixel-art6");
-    }
-
-    private void testWithFile(String filename) {
         Image i = new Image(filename);
 
         Drawing d = i.compress();
@@ -85,7 +77,7 @@ public class ImageCompressorTest
 
         try {
             assertEquals(i.toString(), d.draw().toString());
-        } catch(BadCommand e) {
+        } catch (BadCommand e) {
             fail(e.toString());
         }
     }

@@ -68,7 +68,7 @@ class DrawingCommand
     // if moving without painting, for example
     // left 10 3
     // up 1
-    // up 2 c
+    // up 2 target
     public DrawingCommand(String s)
     {
         // Split the string by whitespace

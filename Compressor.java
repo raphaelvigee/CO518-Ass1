@@ -249,6 +249,21 @@ public class Compressor
         return !drawnCoordinates.removeIf(c -> !drawnColors.contains(image.get(c)) && image.get(c) != getCurrentColor());
     }
 
+    public boolean allColorDrawn(int color)
+    {
+        boolean allDrawn = true;
+
+        for (Coordinate c : getDrawableCoordinates()) {
+            if (image.get(c) == color) {
+                if (!drawnCoordinates.contains(c)) {
+                    allDrawn = false;
+                }
+            }
+        }
+
+        return allDrawn;
+    }
+
     public boolean isPaused()
     {
         return false;
@@ -277,7 +292,8 @@ public class Compressor
             boolean result = this.computeNearestStandalone();
 
             if (!result) {
-                if (cleanDrawnCoordinates()) {
+                if (allColorDrawn(getCurrentColor())) {
+                    cleanDrawnCoordinates();
                     nextColor();
                 }
             }
@@ -300,25 +316,44 @@ public class Compressor
         Set<Coordinate> standaloneCoordinates = this.getDrawableCoordinates();
         standaloneCoordinates.removeAll(drawnCoordinates);
 
-        HashMap<InlinePixels, Integer> inlinePixelGain = new HashMap<>();
+        class InlinePixelsTargetCost
+        {
+            InlinePixels ip;
+
+            Coordinate target;
+
+            int cost;
+
+            public InlinePixelsTargetCost(InlinePixels ip, Coordinate target, int cost)
+            {
+                this.ip = ip;
+                this.target = target;
+                this.cost = cost;
+            }
+        }
+
+        HashMap<InlinePixelsTargetCost, Integer> targetScores = new HashMap<>();
         for (Coordinate c : standaloneCoordinates) {
             if (image.get(c.x, c.y) == getCurrentColor()) {
-                int cost = getCostGoTo(c);
                 InlinePixels ip = this.computeBestInlinePixels(c);
 
                 if (ip.contains(image, getCurrentColor())) {
-                    inlinePixelGain.put(ip, ip.length() - cost);
+                    Coordinate target = computeBestLocationForDrawing(ip);
+
+                    int cost = getCostGoTo(target);
+
+                    InlinePixelsTargetCost iptc = new InlinePixelsTargetCost(ip, target, cost);
+
+                    targetScores.put(iptc, iptc.ip.length() - cost);
                 }
             }
         }
 
-        if (inlinePixelGain.size() == 0) {
+        if (targetScores.size() == 0) {
             return false;
         }
 
-        InlinePixels ip = Collections.max(inlinePixelGain.entrySet(), Map.Entry.comparingByValue()).getKey();
-
-        Coordinate target = computeBestLocationForDrawing(ip);
+        Coordinate target = Collections.max(targetScores.entrySet(), Map.Entry.comparingByValue()).getKey().target;
 
         int distanceX = target.x - cursor.x;
         int distanceY = target.y - cursor.y;
@@ -492,14 +527,10 @@ public class Compressor
         int x = coordinate.x;
         int y = coordinate.y;
 
-        double containsCap = 70 / 100;
-
         int incr = getIncr(direction);
 
         int i = -1;
         int color;
-        int containsCount = 0;
-        int lastIBeforeContains = i;
         boolean containsCurrentColor = false;
         boolean containsUndrawn = false;
         while (true) {
@@ -527,32 +558,21 @@ public class Compressor
                 break;
             }
 
-            if (getCurrentColor() != color) {
+            if (getCurrentColor() == color) {
+                containsCurrentColor = true;
+
                 if (!drawnCoordinates.contains(newC)) {
-                    continue;
-                } else {
-                    break;
-                }
-            }
-
-            containsCurrentColor = true;
-
-            if (drawnCoordinates.contains(newC)) {
-                containsCount++;
-                if (lastIBeforeContains == -1) {
-                    lastIBeforeContains = i;
+                    containsUndrawn = true;
                 }
             } else {
-                containsUndrawn = true;
+                if (drawnColors.contains(color)) {
+                    break;
+                }
             }
         }
 
         if (!containsCurrentColor || !containsUndrawn) {
             return 0;
-        }
-
-        if (i > 0 && containsCount / i > containsCap) {
-            return lastIBeforeContains;
         }
 
         return i;
