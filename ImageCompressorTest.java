@@ -8,45 +8,63 @@ import org.junit.runners.Parameterized.Parameters;
 import java.util.Arrays;
 import java.util.Collection;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 @RunWith(Enclosed.class)
 public class ImageCompressorTest
 {
-    public static Collection<Object> data()
+    public static Collection<Object[]> data()
     {
-        return Arrays.asList(new Object[]{
-                "./test-images/test-image1",
-                "./test-images/test-image2",
-                "./test-images/test-image3",
-                "./test-images/test-image4",
-                "./test-images/test-image5",
-                "./pixel-art/pixel-art1",
-                "./pixel-art/pixel-art2",
-                "./pixel-art/pixel-art3",
-                "./pixel-art/pixel-art4",
-                "./pixel-art/pixel-art5",
-                "./pixel-art/pixel-art6",
+        return Arrays.asList(new Object[][]{
+                {"./test-images/test-image1", 14},
+                {"./test-images/test-image2", 29},
+                {"./test-images/test-image3", 200},
+                {"./test-images/test-image4", 22},
+                {"./test-images/test-image5", 26},
+                {"./pixel-art/pixel-art1", 227},
+                {"./pixel-art/pixel-art2", 189},
+                {"./pixel-art/pixel-art3", 43},
+                {"./pixel-art/pixel-art4", 60},
+                {"./pixel-art/pixel-art5", 184},
+                {"./pixel-art/pixel-art6", 115},
         });
     }
 
     @RunWith(Parameterized.class)
     public static class ParameterizedTests
     {
-        @Parameter
+        @Parameter(0)
         public String filename;
 
+        @Parameter(1)
+        public Integer maxNumberCommands;
+
         @Parameters(name = "{0}")
-        public static Collection<Object> data()
+        public static Collection<Object[]> data()
         {
             return ImageCompressorTest.data();
         }
 
         @Test
-        public void file()
+        public void testWithFile()
         {
-            ImageCompressorTest.testWithFile(filename);
+            Image i = new Image(filename);
+
+            Drawing d = i.compress();
+
+            int n = d.commands.size();
+
+            System.out.println("Nb commands: " + n);
+
+            if (null != maxNumberCommands) {
+                assertTrue("commands number lower or equal than " + maxNumberCommands + ", got " + n, n <= maxNumberCommands);
+            }
+
+            try {
+                assertEquals(i.toString(), d.draw().toString());
+            } catch (BadCommand e) {
+                fail(e.toString());
+            }
         }
     }
 
@@ -57,28 +75,13 @@ public class ImageCompressorTest
         {
             int score = 0;
 
-            for (Object f : ImageCompressorTest.data()) {
-                Image i = new Image((String) f);
+            for (Object[] f : ImageCompressorTest.data()) {
+                Image i = new Image((String) f[0]);
                 Drawing d = i.compress();
                 score += d.commands.size();
             }
 
             System.out.println(score);
-        }
-    }
-
-    public static void testWithFile(String filename)
-    {
-        Image i = new Image(filename);
-
-        Drawing d = i.compress();
-
-        System.out.println("Nb commands: " + d.commands.size());
-
-        try {
-            assertEquals(i.toString(), d.draw().toString());
-        } catch (BadCommand e) {
-            fail(e.toString());
         }
     }
 }

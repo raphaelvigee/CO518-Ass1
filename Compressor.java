@@ -330,11 +330,16 @@ public class Compressor
                 this.target = target;
                 this.cost = cost;
             }
+
+            public int score()
+            {
+                return ip.length() - cost;
+            }
         }
 
-        HashMap<InlinePixelsTargetCost, Integer> targetScores = new HashMap<>();
+        List<InlinePixelsTargetCost> targetScores = new ArrayList<>();
         for (Coordinate c : standaloneCoordinates) {
-            if (image.get(c.x, c.y) == getCurrentColor()) {
+            if (image.get(c) == getCurrentColor()) {
                 InlinePixels ip = this.computeBestInlinePixels(c);
 
                 if (ip.contains(image, getCurrentColor())) {
@@ -344,7 +349,7 @@ public class Compressor
 
                     InlinePixelsTargetCost iptc = new InlinePixelsTargetCost(ip, target, cost);
 
-                    targetScores.put(iptc, iptc.ip.length() - cost);
+                    targetScores.add(iptc);
                 }
             }
         }
@@ -353,7 +358,15 @@ public class Compressor
             return false;
         }
 
-        Coordinate target = Collections.max(targetScores.entrySet(), Map.Entry.comparingByValue()).getKey().target;
+        Comparator<InlinePixelsTargetCost> cmp = (o1, o2) -> {
+            if (o1.score() != o2.score()) {
+                return Integer.valueOf(o2.cost).compareTo(o1.cost);
+            }
+
+            return Integer.valueOf(o1.score()).compareTo(o2.score());
+        };
+
+        Coordinate target = Collections.max(targetScores, cmp).target;
 
         int distanceX = target.x - cursor.x;
         int distanceY = target.y - cursor.y;
