@@ -21,11 +21,11 @@ public class ImageCompressorTest
                 {"./test-images/test-image3", 200},
                 {"./test-images/test-image4", 22},
                 {"./test-images/test-image5", 26},
-                {"./pixel-art/pixel-art1", 227},
-                {"./pixel-art/pixel-art2", 189},
+                {"./pixel-art/pixel-art1", 217},
+                {"./pixel-art/pixel-art2", 191}, // 189
                 {"./pixel-art/pixel-art3", 43},
-                {"./pixel-art/pixel-art4", 60},
-                {"./pixel-art/pixel-art5", 184},
+                {"./pixel-art/pixel-art4", 55},
+                {"./pixel-art/pixel-art5", 177},
                 {"./pixel-art/pixel-art6", 115},
         });
     }
@@ -57,7 +57,7 @@ public class ImageCompressorTest
             System.out.println("Nb commands: " + n);
 
             if (null != maxNumberCommands) {
-                assertTrue("commands number lower or equal than " + maxNumberCommands + ", got " + n, n <= maxNumberCommands);
+                assertEquals((int) maxNumberCommands, n);
             }
 
             try {

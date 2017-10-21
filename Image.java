@@ -168,10 +168,6 @@ public class Image
 
     public static void main(String[] args)
     {
-        args = new String[1];
-//        args[0] = "./test-images/test-image5";
-        args[0] = "./pixel-art/pixel-art1";
-
         // A simple test to read in an image and print it out.
         Image i = new Image(args[0]);
 

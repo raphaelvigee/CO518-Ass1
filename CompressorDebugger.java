@@ -1,9 +1,11 @@
 import javax.swing.*;
-import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionAdapter;
 import java.util.Objects;
 
 class PixelCellRenderer extends DefaultTableCellRenderer
@@ -19,9 +21,11 @@ class PixelCellRenderer extends DefaultTableCellRenderer
 
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int col)
     {
-        Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
+        Coordinate hoverCursor = compressor.hoverCursor;
 
-        JLabel label = (JLabel) c;
+        Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
+
+        JLabel label = (JLabel) component;
 
         label.setHorizontalAlignment(SwingConstants.CENTER);
         label.setVerticalAlignment(SwingConstants.CENTER);
@@ -47,9 +51,14 @@ class PixelCellRenderer extends DefaultTableCellRenderer
             label.setForeground(Color.BLACK);
         }
 
-        if (compressor.cursor.equals(new Coordinate(col - 1, row - 1))) {
-            Border border = BorderFactory.createLineBorder(Color.magenta, 2);
-            label.setBorder(border);
+        Coordinate c = new Coordinate(col - 1, row - 1);
+
+        if (compressor.cursor.equals(c)) {
+            label.setBorder(BorderFactory.createLineBorder(Color.MAGENTA, 1));
+        }
+
+        if (null != hoverCursor && hoverCursor.equals(c)) {
+            label.setBorder(BorderFactory.createLineBorder(Color.ORANGE, 1));
         }
 
         return label;
@@ -106,6 +115,8 @@ public class CompressorDebugger extends Compressor
 
     private int cellSize = 15;
 
+    protected Coordinate hoverCursor = null;
+
     CompressorDebugger(Image image)
     {
         super(image);
@@ -147,6 +158,50 @@ public class CompressorDebugger extends Compressor
         tables.setBackground(Color.ORANGE);
         frame.add(tables, BorderLayout.CENTER);
 
+        MouseMotionAdapter mouseMotionAdapter = new MouseMotionAdapter()
+        {
+            @Override
+            public void mouseMoved(MouseEvent e)
+            {
+                Coordinate oldHoverCursor = hoverCursor;
+
+                Point p = e.getPoint();
+                JTable table = (JTable) e.getComponent();
+                int row = table.rowAtPoint(p);
+                int col = table.columnAtPoint(p);
+
+                hoverCursor = new Coordinate(col - 1, row - 1);
+
+                if (oldHoverCursor != hoverCursor) {
+                    update();
+                }
+            }
+        };
+
+        MouseListener mouseListener = new MouseListener()
+        {
+            @Override
+            public void mouseClicked(MouseEvent e) {}
+
+            @Override
+            public void mousePressed(MouseEvent e) {}
+
+            @Override
+            public void mouseReleased(MouseEvent e) {}
+
+            @Override
+            public void mouseEntered(MouseEvent e) {}
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                if (null != hoverCursor) {
+                    hoverCursor = null;
+                    update();
+                }
+            }
+        };
+
         // Live table
         liveTableModel = new DefaultTableModel();
         liveTableModel.setColumnCount(tableColumns);
@@ -160,12 +215,20 @@ public class CompressorDebugger extends Compressor
             liveTableModel.setValueAt(y, y + 1, 0);
         }
 
-        liveTable = new JTable(liveTableModel);
+        liveTable = new JTable(liveTableModel)
+        {
+            public boolean isCellEditable(int row, int column)
+            {
+                return false;
+            }
+        };
         liveTable.setPreferredSize(new Dimension(tableWidth, tableHeight));
         liveTable.setRowHeight(cellSize);
         liveTable.setFocusable(false);
         liveTable.setRowSelectionAllowed(false);
         liveTable.setDefaultRenderer(Object.class, new PixelCellRenderer(this));
+        liveTable.addMouseMotionListener(mouseMotionAdapter);
+        liveTable.addMouseListener(mouseListener);
         tables.add(liveTable, BorderLayout.EAST);
 
         // Expected result table
@@ -181,13 +244,21 @@ public class CompressorDebugger extends Compressor
             expectedTableModel.setValueAt(y, y + 1, 0);
         }
 
-        expectedTable = new JTable(expectedTableModel);
+        expectedTable = new JTable(expectedTableModel)
+        {
+            public boolean isCellEditable(int row, int column)
+            {
+                return false;
+            }
+        };
         expectedTable.setPreferredSize(new Dimension(tableWidth, tableHeight));
         expectedTable.setRowHeight(cellSize);
         expectedTable.setFocusable(false);
         expectedTable.setRowSelectionAllowed(false);
         expectedTable.setDefaultRenderer(Object.class, new PixelCellRenderer(this));
         expectedTable.setBorder(new EmptyBorder(0, 0, 0, 3));
+        expectedTable.addMouseMotionListener(mouseMotionAdapter);
+        expectedTable.addMouseListener(mouseListener);
         tables.add(expectedTable, BorderLayout.WEST);
 
         // Controls
@@ -280,7 +351,7 @@ public class CompressorDebugger extends Compressor
         cursorPosition.setText("Cursor: " + this.cursor);
 
         // Following commands
-        if(true) {
+        if (true) {
             Image image = null;
             try {
                 image = this.drawing.draw();
@@ -297,7 +368,7 @@ public class CompressorDebugger extends Compressor
         }
 
         // Drawn Coordinates
-        if(false) {
+        if (false) {
             for (int y = 0; y < imageRows; y++) {
                 for (int x = 0; x < imageColumns; x++) {
                     Coordinate c = new Coordinate(x, y);
@@ -310,7 +381,6 @@ public class CompressorDebugger extends Compressor
                 }
             }
         }
-
 
 
         this.updateExpected();

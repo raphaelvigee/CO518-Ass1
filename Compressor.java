@@ -330,11 +330,6 @@ public class Compressor
                 this.target = target;
                 this.cost = cost;
             }
-
-            public int score()
-            {
-                return ip.length() - cost;
-            }
         }
 
         List<InlinePixelsTargetCost> targetScores = new ArrayList<>();
@@ -358,14 +353,7 @@ public class Compressor
             return false;
         }
 
-        Comparator<InlinePixelsTargetCost> cmp = (o1, o2) -> {
-            if (o1.score() != o2.score()) {
-                return Integer.valueOf(o2.cost).compareTo(o1.cost);
-            }
-
-            return Integer.valueOf(o1.score()).compareTo(o2.score());
-        };
-
+        Comparator<InlinePixelsTargetCost> cmp = (o1, o2) -> Integer.valueOf(o2.cost).compareTo(o1.cost);
         Coordinate target = Collections.max(targetScores, cmp).target;
 
         int distanceX = target.x - cursor.x;
@@ -449,9 +437,26 @@ public class Compressor
             locations.add(ip.from.getNeighbour(Direction.LEFT));
         }
 
-        Map<Coordinate, Integer> locationsCost = locations.stream().collect(Collectors.toMap(c -> c, this::getCostGoTo));
+        class CoordinateCost
+        {
+            Coordinate coordinate;
 
-        return Collections.min(locationsCost.entrySet(), Map.Entry.comparingByValue()).getKey();
+            int cost;
+
+            public CoordinateCost(Coordinate coordinate, int cost)
+            {
+                this.coordinate = coordinate;
+                this.cost = cost;
+            }
+        }
+
+        List<CoordinateCost> coordinatesCost = locations.stream()
+                .map(c -> new CoordinateCost(c, getCostGoTo(c)))
+                .collect(Collectors.toList());
+
+        Comparator<CoordinateCost> cmp = (o1, o2) -> Integer.valueOf(o2.cost).compareTo(o1.cost);
+
+        return Collections.max(coordinatesCost, cmp).coordinate;
     }
 
     private boolean isWithinBounds(Coordinate c)
