@@ -1,3 +1,4 @@
+import junit.framework.Assert;
 import org.junit.Test;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
@@ -8,7 +9,8 @@ import org.junit.runners.Parameterized.Parameters;
 import java.util.Arrays;
 import java.util.Collection;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @RunWith(Enclosed.class)
 public class ImageCompressorTest
@@ -21,12 +23,12 @@ public class ImageCompressorTest
                 {"./test-images/test-image3", 200},
                 {"./test-images/test-image4", 22},
                 {"./test-images/test-image5", 26},
-                {"./pixel-art/pixel-art1", 217},
-                {"./pixel-art/pixel-art2", 191}, // 189
+                {"./pixel-art/pixel-art1", 215},
+                {"./pixel-art/pixel-art2", 181},
                 {"./pixel-art/pixel-art3", 43},
                 {"./pixel-art/pixel-art4", 55},
-                {"./pixel-art/pixel-art5", 177},
-                {"./pixel-art/pixel-art6", 115},
+                {"./pixel-art/pixel-art5", 176},
+                {"./pixel-art/pixel-art6", 113},
         });
     }
 
@@ -54,7 +56,7 @@ public class ImageCompressorTest
 
             int n = d.commands.size();
 
-            System.out.println("Nb commands: " + n);
+            System.out.println(filename + "\tNb commands: " + n);
 
             if (null != maxNumberCommands) {
                 assertEquals((int) maxNumberCommands, n);

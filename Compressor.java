@@ -397,16 +397,29 @@ public class Compressor
         int horizontalLength = lengthLeft + lengthRight;
         int verticalLength = lengthUp + lengthDown;
 
-        if (horizontalLength > verticalLength) {
-            return new InlinePixels(
-                    new Coordinate(coordinate.x - lengthLeft, coordinate.y),
-                    new Coordinate(coordinate.x + lengthRight, coordinate.y)
-            );
+        InlinePixels horizontal = new InlinePixels(
+                new Coordinate(coordinate.x - lengthLeft, coordinate.y),
+                new Coordinate(coordinate.x + lengthRight, coordinate.y)
+        );
+
+        InlinePixels vertical = new InlinePixels(
+                new Coordinate(coordinate.x, coordinate.y - lengthUp),
+                new Coordinate(coordinate.x, coordinate.y + lengthDown)
+        );
+
+        if (horizontalLength == verticalLength) {
+            int horizontalCost = getCostGoTo(computeBestLocationForDrawing(horizontal));
+            int verticalCost = getCostGoTo(computeBestLocationForDrawing(vertical));
+
+            if (horizontalCost < verticalCost) {
+                return horizontal;
+            } else {
+                return vertical;
+            }
+        } else if (horizontalLength > verticalLength) {
+            return horizontal;
         } else {
-            return new InlinePixels(
-                    new Coordinate(coordinate.x, coordinate.y - lengthUp),
-                    new Coordinate(coordinate.x, coordinate.y + lengthDown)
-            );
+            return vertical;
         }
     }
 
