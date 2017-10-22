@@ -202,7 +202,6 @@ public class Compressor
         this.drawing = new Drawing(h, w, background);
         this.drawnCoordinates = new HashSet<>();
         this.drawnColors = new HashSet<>();
-        this.drawnColors.add(background);
         this.nextColor();
     }
 
@@ -211,14 +210,6 @@ public class Compressor
         int limit = 10000;
         int i = 0;
         while (!isDone() && i < limit) {
-            while (isPaused()) {
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-
             computeNextCommand();
             i++;
         }
@@ -264,11 +255,6 @@ public class Compressor
         return allDrawn;
     }
 
-    public boolean isPaused()
-    {
-        return false;
-    }
-
     private Set<Coordinate> getDrawableCoordinates()
     {
         HashSet<Coordinate> drawableCoordinates = new HashSet<>();
@@ -284,7 +270,7 @@ public class Compressor
         return drawableCoordinates;
     }
 
-    private void computeNextCommand()
+    protected void computeNextCommand()
     {
         DirectionLength dl = this.getBestDirectionLength(cursor, 1);
 

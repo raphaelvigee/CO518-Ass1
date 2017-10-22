@@ -318,6 +318,19 @@ public class CompressorDebugger extends Compressor
     }
 
     @Override
+    protected void computeNextCommand()
+    {
+        while (isPaused()) {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        super.computeNextCommand();
+    }
+
     public boolean isPaused()
     {
         return isPaused;
