@@ -1,6 +1,9 @@
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Store Coordinate
+ */
 class Coordinate
 {
     int x;
@@ -36,6 +39,12 @@ class Coordinate
         return x + "," + y;
     }
 
+    /**
+     * Get neighbour Coordinate in Direction
+     *
+     * @param direction The Direction
+     * @return The neighbour
+     */
     public Coordinate getNeighbour(Direction direction)
     {
         if (direction == Direction.UP) {
@@ -58,6 +67,9 @@ class Coordinate
     }
 }
 
+/**
+ * Stores a pair Direction / run-length
+ */
 class DirectionLength
 {
     Direction direction;
@@ -71,6 +83,9 @@ class DirectionLength
     }
 }
 
+/**
+ * Stores a representation of a line of pixels
+ */
 class InlinePixels
 {
     Coordinate from;
@@ -83,6 +98,9 @@ class InlinePixels
         this.to = to;
     }
 
+    /**
+     * @return The InlinePixels Orientation
+     */
     public Orientation getOrientation()
     {
         if (from.equals(to)) {
@@ -100,11 +118,19 @@ class InlinePixels
         return null;
     }
 
+    /**
+     * @return The InlinePixels length
+     */
     public int length()
     {
         return Math.abs((from.x - to.x) + (from.y - to.y)) + 1;
     }
 
+    /**
+     * @param image The Image
+     * @param color The color
+     * @return Wheter if the InlinePixels contains the color
+     */
     public boolean contains(Image image, int color)
     {
         if (getOrientation() == Orientation.SINGLE) {
@@ -136,6 +162,9 @@ class InlinePixels
         return false;
     }
 
+    /**
+     * @return The InlinePixels Direction
+     */
     public Direction getDirection()
     {
         if (getOrientation() == Orientation.HORIZONTAL) {
@@ -156,6 +185,9 @@ class InlinePixels
     }
 }
 
+/**
+ * The Compressor
+ */
 public class Compressor
 {
     public Image image;
@@ -192,6 +224,7 @@ public class Compressor
             }
         }
 
+        // Extract individual colors ordered by importance
         colors = colorsCount.entrySet().stream()
                 .sorted((c1, c2) -> Integer.compare(c2.getValue(), c1.getValue()))
                 .map(Map.Entry::getKey)
@@ -205,6 +238,12 @@ public class Compressor
         this.nextColor();
     }
 
+    /**
+     * Runs the compression
+     * `i` prevents infinite loops
+     *
+     * @return The Drawing
+     */
     public Drawing compress()
     {
         int limit = 10000;
@@ -221,11 +260,19 @@ public class Compressor
         return drawing;
     }
 
+    /**
+     * Get current color
+     *
+     * @return The current color
+     */
     public int getCurrentColor()
     {
         return colors.get(currentColorIndex);
     }
 
+    /**
+     * Triggers next color from the pool
+     */
     public void nextColor()
     {
         drawnColors.add(colors.get(currentColorIndex));
@@ -235,11 +282,20 @@ public class Compressor
         }
     }
 
+    /**
+     * Cleanup drawnCoordinates from coordinates for which the color has not been processed yet
+     *
+     * @return Nothing has been removed
+     */
     public boolean cleanDrawnCoordinates()
     {
         return !drawnCoordinates.removeIf(c -> !drawnColors.contains(image.get(c)) && image.get(c) != getCurrentColor());
     }
 
+    /**
+     * @param color Color to test
+     * @return Is color fully drawn
+     */
     public boolean allColorDrawn(int color)
     {
         boolean allDrawn = true;
@@ -255,6 +311,11 @@ public class Compressor
         return allDrawn;
     }
 
+    /**
+     * Compute coordinates not being part of the background
+     *
+     * @return The not drawn coordinates
+     */
     private Set<Coordinate> getDrawableCoordinates()
     {
         HashSet<Coordinate> drawableCoordinates = new HashSet<>();
@@ -270,6 +331,9 @@ public class Compressor
         return drawableCoordinates;
     }
 
+    /**
+     * Compute next command
+     */
     protected void computeNextCommand()
     {
         DirectionLength dl = this.getBestDirectionLength(cursor, 1);
@@ -292,16 +356,25 @@ public class Compressor
         }
     }
 
+    /**
+     * @return Is the image fully drawn
+     */
     private boolean isDone()
     {
         return drawnCoordinates.containsAll(getDrawableCoordinates());
     }
 
+    /**
+     * Compute commands for moving to the "lest expensive" next location
+     *
+     * @return Whether if it moved successfully or not
+     */
     private boolean computeNearestStandalone()
     {
         Set<Coordinate> standaloneCoordinates = this.getDrawableCoordinates();
         standaloneCoordinates.removeAll(drawnCoordinates);
 
+        // Used to store an InlinePixels, a target Coordinate and its cost
         class InlinePixelsTargetCost
         {
             InlinePixels ip;
@@ -356,6 +429,12 @@ public class Compressor
         return true;
     }
 
+    /**
+     * Get "cost" in terms of number of commands to move to the coordinate
+     *
+     * @param c The coordinate
+     * @return The cost
+     */
     private int getCostGoTo(Coordinate c)
     {
         int cost = 0;
@@ -371,6 +450,12 @@ public class Compressor
         return cost;
     }
 
+    /**
+     * Compute best InlinePixels for coordinate
+     *
+     * @param coordinate The coordinate
+     * @return The InlinePixel
+     */
     private InlinePixels computeBestInlinePixels(Coordinate coordinate)
     {
         Map<Direction, Integer> neighbours = calculateNeighboursLengths(coordinate, 1);
@@ -409,6 +494,12 @@ public class Compressor
         }
     }
 
+    /**
+     * Returns best coordinate for drawing InlinePixels
+     *
+     * @param ip The InlinePixels
+     * @return The best Coordinate
+     */
     private Coordinate computeBestLocationForDrawing(InlinePixels ip)
     {
         List<Coordinate> locations = new ArrayList<>();
@@ -436,6 +527,7 @@ public class Compressor
             locations.add(ip.from.getNeighbour(Direction.LEFT));
         }
 
+        // Used to store a Coordinate and its cost
         class CoordinateCost
         {
             Coordinate coordinate;
@@ -458,21 +550,43 @@ public class Compressor
         return Collections.max(coordinatesCost, cmp).coordinate;
     }
 
+    /**
+     * @param c The Coordinate
+     * @return Is the Coordinate within bounds
+     */
     private boolean isWithinBounds(Coordinate c)
     {
         return c.x >= 0 && c.x <= image.getWidth() && c.y >= 0 && c.y < image.getHeight();
     }
 
+    /**
+     * @param d The Direction
+     * @return Is the Direction in the orthogonal direction
+     */
     private boolean isForward(Direction d)
     {
         return d == Direction.DOWN || d == Direction.RIGHT;
     }
 
+    /**
+     * Return the increment for the Direction
+     *
+     * @param d The Direction
+     * @return The increment (+1 or -1)
+     */
     private int getIncr(Direction d)
     {
         return isForward(d) ? 1 : -1;
     }
 
+    /**
+     * Add Command to the Drawing object and move the cursor
+     *
+     * @param direction The Direction
+     * @param distance  The distance
+     * @param paint     Whether to paint or not
+     * @param color     The color to paint
+     */
     protected void addCommand(Direction direction, int distance, boolean paint, int color)
     {
         StringBuilder sb = new StringBuilder(direction.toString() + " " + distance);
@@ -507,6 +621,11 @@ public class Compressor
         }
     }
 
+    /**
+     * @param coordinate The Coordinate
+     * @param offset     The offset
+     * @return The best DirectionLength for the coordinate
+     */
     private DirectionLength getBestDirectionLength(Coordinate coordinate, int offset)
     {
         Map<Direction, Integer> neighbours = calculateNeighboursLengths(coordinate, offset);
@@ -527,6 +646,13 @@ public class Compressor
         return new DirectionLength(pair.getKey(), pair.getValue());
     }
 
+    /**
+     * Get neighbours run-length for Coordinate
+     *
+     * @param coordinate The Coordinate
+     * @param offset     The offset
+     * @return A Map of Direction / length
+     */
     private Map<Direction, Integer> calculateNeighboursLengths(Coordinate coordinate, int offset)
     {
         HashMap<Direction, Integer> directions = new HashMap<>();
@@ -539,6 +665,12 @@ public class Compressor
         return directions;
     }
 
+    /**
+     * @param coordinate The Coordinate
+     * @param direction  The Direction
+     * @param offset     The offset
+     * @return run-length of Direction for Coordinate
+     */
     private int calculateDirectionLength(Coordinate coordinate, Direction direction, int offset)
     {
         int x = coordinate.x;
