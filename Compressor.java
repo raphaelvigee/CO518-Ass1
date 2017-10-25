@@ -4,7 +4,7 @@ import java.util.stream.Collectors;
 /**
  * Store Coordinate
  */
-class Coordinate
+class Coordinate implements Cloneable
 {
     int x;
 
@@ -64,6 +64,15 @@ class Coordinate
         }
 
         return null;
+    }
+
+    public Coordinate clone()
+    {
+        try {
+            return (Coordinate) super.clone();
+        } catch (CloneNotSupportedException e) {
+            return null;
+        }
     }
 }
 

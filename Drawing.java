@@ -122,7 +122,10 @@ class DrawingCommand
 
 class BadCommand extends Exception
 {
-    // Consider adding fields here describing the exceptional circumstance
+    public BadCommand(int x, int y)
+    {
+        super("Cannot draw at coordinate (" + x + ", " + y + ")");
+    }
 }
 
 // Represent a picture as the height and width, and a sequence of drawing
@@ -256,11 +259,8 @@ public class Drawing
     {
         Image i = new Image(height, width, background);
 
-        int pointerX = 0;
-        int pointerY = 0;
-
-        int newPointerX = pointerX;
-        int newPointerY = pointerY;
+        Coordinate cursor = new Coordinate(0, 0);
+        Coordinate newCursor = cursor.clone();
 
         for (DrawingCommand command : commands) {
             Direction dir = command.dir;
@@ -268,26 +268,30 @@ public class Drawing
             int c = command.colour;
 
             if (dir == Direction.UP) {
-                newPointerY -= d;
+                newCursor.y -= d;
             } else if (dir == Direction.DOWN) {
-                newPointerY += d;
+                newCursor.y += d;
             } else if (dir == Direction.LEFT) {
-                newPointerX -= d;
+                newCursor.x -= d;
             } else if (dir == Direction.RIGHT) {
-                newPointerX += d;
+                newCursor.x += d;
             }
 
-            if (dir == Direction.UP || dir == Direction.DOWN) {
+            if (0 == d) {
+                if (command.paint) {
+                    i.set(newCursor.x, newCursor.y, c);
+                }
+            } else if (dir == Direction.UP || dir == Direction.DOWN) {
                 boolean forward = dir == Direction.DOWN;
 
                 if (command.paint) {
                     if (forward) {
-                        for (int p = pointerY; p < newPointerY; p++) {
-                            i.set(newPointerX, p + 1, c);
+                        for (int p = cursor.y; p < newCursor.y; p++) {
+                            i.set(newCursor.x, p + 1, c);
                         }
                     } else {
-                        for (int p = pointerY; p > newPointerY; p--) {
-                            i.set(newPointerX, p - 1, c);
+                        for (int p = cursor.y; p > newCursor.y; p--) {
+                            i.set(newCursor.x, p - 1, c);
                         }
                     }
                 }
@@ -296,19 +300,18 @@ public class Drawing
 
                 if (command.paint) {
                     if (forward) {
-                        for (int p = pointerX; p < newPointerX; p++) {
-                            i.set(p + 1, newPointerY, c);
+                        for (int p = cursor.x; p < newCursor.x; p++) {
+                            i.set(p + 1, newCursor.y, c);
                         }
                     } else {
-                        for (int p = pointerX; p > newPointerX; p--) {
-                            i.set(p - 1, newPointerY, c);
+                        for (int p = cursor.x; p > newCursor.x; p--) {
+                            i.set(p - 1, newCursor.y, c);
                         }
                     }
                 }
             }
 
-            pointerX = newPointerX;
-            pointerY = newPointerY;
+            cursor = newCursor.clone();
         }
 
         return i;
@@ -316,16 +319,13 @@ public class Drawing
 
     public static void main(String[] args)
     {
-        args = new String[1];
-        args[0] = "./test-images/test-command";
-
         // A simple test to read in an file of drawing commands and print it out.
         Drawing d = new Drawing(args[0]);
 
         try {
-            d.draw().toString();
+            System.out.println(d.draw().toString());
         } catch (BadCommand e) {
-            System.out.println(e);
+            System.err.println(e);
         }
     }
 }

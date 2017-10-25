@@ -33,7 +33,7 @@ public class ImageCompressorTest
     }
 
     @RunWith(Parameterized.class)
-    public static class ParameterizedTests
+    public static class CompressSingleTests
     {
         @Parameter(0)
         public String filename;
@@ -70,7 +70,7 @@ public class ImageCompressorTest
         }
     }
 
-    public static class SingleTests
+    public static class Compress
     {
         @Test
         public void score()

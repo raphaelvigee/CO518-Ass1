@@ -2,7 +2,6 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Objects;
 
 // This class represents a simple rectangular image, where each pixel can be
 // one of 16 colours.
@@ -84,7 +83,7 @@ public class Image
         try {
             pixels[y][x] = v;
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw new BadCommand();
+            throw new BadCommand(x, y);
         }
     }
 
@@ -168,31 +167,11 @@ public class Image
 
     public static void main(String[] args)
     {
-        // A simple test to read in an image and print it out.
         Image i = new Image(args[0]);
 
-        Drawing d = i.compressWithDebug();
+//        System.out.print(i.compressWithDebug().toString());
+        System.out.print(i.compress().toString());
 
-        System.out.println("Nb commands: " + d.commands.size());
-
-        System.out.println();
-
-        System.out.print(d.toString());
-
-        System.out.println();
-
-        try {
-            System.out.print(d.draw().toString());
-        } catch (BadCommand e) {
-            System.out.println(e);
-        }
-
-        System.out.println();
-
-        try {
-            System.out.println(Objects.equals(i.toString(), d.draw().toString()));
-        } catch (BadCommand e) {
-            System.out.println(e);
-        }
+        i.toPNG(args[0]);
     }
 }
